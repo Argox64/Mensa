@@ -1,0 +1,19 @@
+{
+  "name": "@cook/trpc-server",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@cook/db": "*",
+    "@cook/validations": "*",
+    "@trpc/server": "^10.45.2",
+    "jsonwebtoken": "^9.0.2",
+    "openai": "^4.85.1"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.8"
+  }
+}

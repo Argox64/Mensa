@@ -1,0 +1,11 @@
+{
+    "extends": "@cook/typescript-config/base.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "rootDir": ".",
+        "jsx": "react-jsx",
+        "esModuleInterop": true,
+        "declaration": false, // !! IMPORTANT FOR TRPC CLIENT !!
+        "declarationMap": false
+    }
+}

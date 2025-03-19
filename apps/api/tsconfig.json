@@ -1,0 +1,25 @@
+{
+    "extends": "@cook/typescript-config/base.json",
+    "ts-node": {
+      "require": [
+        "tsconfig-paths/register"
+      ],
+    },
+    "compilerOptions": {
+      "allowJs": true,
+      "module": "commonjs",
+      "moduleResolution": "node",
+      "target": "es2016",
+      "experimentalDecorators": true,
+      "emitDecoratorMetadata": true,
+      "baseUrl": "./",
+      "paths": {
+        "@/*": ["./src/app/*"],
+      },
+      "outDir": "./dist",
+      "declarationDir": "./dist/types",
+      "resolveJsonModule": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+  }

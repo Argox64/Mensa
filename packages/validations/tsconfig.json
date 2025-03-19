@@ -1,0 +1,13 @@
+{
+  "extends": "@cook/typescript-config/base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ESNext",
+    "baseUrl": "./",
+    "outDir": "./dist",
+    "declarationDir": "./dist/types"
+  },
+  "include": ["src/**/*", "index.ts"],
+  "exclude": ["node_modules", "dist"]
+}

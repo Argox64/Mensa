@@ -1,0 +1,17 @@
+{
+  "name": "@cook/errors",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "chromatic": "^11.25.1",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@cook/typescript-config": "*"
+  }
+}

@@ -1,0 +1,7 @@
+{
+    "extends": "@cook/typescript-config/base.json",
+    "compilerOptions": {
+        "declaration": false,
+        "declarationMap": false,
+    }
+}

@@ -1,0 +1,1 @@
+export { type AppRouterType } from '@cook/trpc-server/routers'

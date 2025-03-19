@@ -1,0 +1,27 @@
+{
+    "name": "@cook/trpc-client",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@cook/supabase": "^1.0.0",
+        "@cook/trpc-server": "*",
+        "@tanstack/query-core": "^4.36.1",
+        "@tanstack/react-query": "^4.36.1",
+        "@trpc/client": "^10.45.2",
+        "@trpc/react-query": "^10.45.2"
+    },
+    "devDependencies": {
+        "@cook/eslint-config": "*",
+        "@cook/typescript-config": "*",
+        "@types/react": "^18.2.0",
+        "next": "^15.1.6",
+        "react": "^18.2.0"
+    }
+}
