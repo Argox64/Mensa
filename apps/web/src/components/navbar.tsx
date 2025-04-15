@@ -20,7 +20,7 @@ export default function Navbar() {
             Sign In
           </Link>
           <Button type="button" className="bg-[--primary-color]">
-            Sign Up
+            <Link href="/signup">Sign Up</Link>
           </Button>
         </div>
       </div>

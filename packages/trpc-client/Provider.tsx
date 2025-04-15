@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from '@cook/supabase'
+import { createBrowserSupabaseClient } from '@cook/supabase'
 import { trpcClient as trpc } from './client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'
@@ -15,7 +15,7 @@ export const Provider: FC<{ children: React.ReactNode }> = ({ children }: { chil
         httpBatchLink({
           url: process.env.NEXT_PUBLIC_API_URL!,
           async headers() {
-            const token = await createClient().auth.getSession().then(({ data }) => data.session?.access_token);
+            const token = await createBrowserSupabaseClient().auth.getSession().then(({ data }) => data.session?.access_token);
             return {
               authorization: token ? `Bearer ${token}` : ''
             }

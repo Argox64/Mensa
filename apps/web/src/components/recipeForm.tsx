@@ -15,13 +15,17 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { useEffect, useState } from "react";
-import {SearchInput} from "./searchInput";
+import { SearchInput } from "./searchInput";
 
 // Schéma de validation
 const formSchema = z.object({
     description: z.string().min(5, "La description doit comporter au moins 5 caractères."),
     dietType: z.string(),
     customDiet: z.string(),
+    maxPreparationAndCookingTime: z
+        .number({ invalid_type_error: "Veuillez entrer un nombre." })
+        .min(1, "Le temps doit être au moins de 1 minute.")
+        .optional()
 });
 
 export default function RecipeForm() {
@@ -34,6 +38,7 @@ export default function RecipeForm() {
             description: "",
             dietType: "none",
             customDiet: "",
+            maxPreparationAndCookingTime: 30,
         },
     });
 
@@ -41,13 +46,13 @@ export default function RecipeForm() {
 
     const mutation = trpcClient.recipes.processRecipe.useMutation();
 
-    const onSubmit = async (data) => {
+    const onSubmit = async (data : any) => {
         try {
             const response = await mutation.mutateAsync({
                 userId: "1234",
                 action: "generate",
-                tags: [],
-                maxPreparationAndCookingTime: 30
+                tags: data.tags,
+                maxPreparationAndCookingTime: data.maxPreparationAndCookingTime,
             });
 
             if ("data" in response && response.data) {
@@ -91,8 +96,30 @@ export default function RecipeForm() {
 
                     <FormItem>
                         <FormLabel>Ajouter un tag :</FormLabel>
-                        <SearchInput/>
+                        <SearchInput />
                     </FormItem>
+
+                    <FormField
+                        control={control}
+                        name="maxPreparationAndCookingTime"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>⏱ Temps de préparation et cuisson max (en minutes) :</FormLabel>
+                                <FormControl>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={300}
+                                        placeholder="ex: 30"
+                                        className="w-full mt-2 p-2 border rounded"
+                                        {...field}
+                                        onChange={(e) => field.onChange(Number(e.target.value))}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
 
                     {/* Bouton Générer */}
