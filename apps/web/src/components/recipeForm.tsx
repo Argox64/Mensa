@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/form";
 import { useEffect, useState } from "react";
 import { SearchInput } from "./searchInput";
+import { useUser } from "@/contexts/UserContext";
 
 // Schéma de validation
 const formSchema = z.object({
@@ -30,7 +31,7 @@ const formSchema = z.object({
 
 export default function RecipeForm() {
     const [customDietActive, setCustomDietActive] = useState(false);
-    const [selectedIntolerances, setSelectedIntolerances] = useState([]);
+    const { user } = useUser();
 
     const form = useForm({
         resolver: zodResolver(formSchema),
@@ -42,16 +43,20 @@ export default function RecipeForm() {
         },
     });
 
-    const { handleSubmit, control, setValue, watch } = form;
+    const { handleSubmit, control, watch } = form;
 
     const mutation = trpcClient.recipes.processRecipe.useMutation();
 
-    const onSubmit = async (data : any) => {
+    const onSubmit = async (data: any) => {
+        if (!user) {
+            console.error("User invalid");
+            return;
+        }
         try {
             const response = await mutation.mutateAsync({
-                userId: "1234",
+                userId: user.id,
                 action: "generate",
-                tags: data.tags,
+                tags: ["Sans lactose"],//data.tags,
                 maxPreparationAndCookingTime: data.maxPreparationAndCookingTime,
             });
 

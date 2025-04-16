@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@cook/db": "*",
-    "@cook/supabase": "^1.0.0",
+    "@cook/supabasejs": "^1.0.0",
     "@cook/validations": "*",
     "@trpc/server": "^10.45.2",
     "jsonwebtoken": "^9.0.2",

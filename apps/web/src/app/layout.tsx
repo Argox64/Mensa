@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Montserrat, Quicksand, Poppins } from "next/font/google";
 import "./globals.css";
-import { Provider } from "@cook/trpc-client/Provider";
+import { Provider as TrpcProvider } from "@cook/trpc-client/Provider";
 import { cn } from "@/lib/utils";
 import Navbar from "@/components/navbar";
 import { Toaster } from "@/components/ui/toaster";
+import { UserProvider } from "@/contexts/UserContext";
 
 /*const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,13 +51,15 @@ export default function RootLayout({
       <body
         className={cn(montserrat.variable, quicksand.variable, poppins.variable, 'antialiased')}
       >
-        <Provider>
-          <Navbar />
-          <div className="flex flex-col gap-4">
-            {children}
-          </div>
-          <Toaster />
-        </Provider>
+        <TrpcProvider>
+          <UserProvider>
+            <Navbar />
+            <div className="flex flex-col gap-4">
+              {children}
+            </div>
+            <Toaster />
+          </UserProvider>
+        </TrpcProvider>
       </body>
     </html>
   );

@@ -1,9 +1,40 @@
+"use client";
+
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import Image from "next/image";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useRouter } from "next/navigation";
+import { trpcClient } from "@cook/trpc-client/client";
+import { SignUpRequest } from "@cook/validations";
+
+type SignUpData = z.infer<typeof SignUpRequest>;
 
 export default function SignUp() {
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpData>({
+    resolver: zodResolver(SignUpRequest),
+  });
+
+  const { mutate: signup, isLoading, error } = trpcClient.users.signUp.useMutation({
+    onSuccess: () => {
+      router.push("/dashboard");
+    },
+  });
+
+  const onSubmit = (data: SignUpData) => {
+    signup(data);
+  };
+
   return (
     <MaxWidthWrapper className="flex flex-col items-center">
       <div className="flex flex-row items-center justify-center w-full h-[700px] sm:gap-10 md:gap-[100px] lg:gap-[400px]">
@@ -15,26 +46,26 @@ export default function SignUp() {
             <p className="text-xl mt-4">
               Crée ton compte gratuitement et commence à planifier tes repas en toute simplicité.
             </p>
-            <form className="flex flex-col gap-4 mt-8">
-              <input
-                type="text"
-                placeholder="Nom"
-                className="px-4 py-3 border rounded-md outline-none focus:ring-2 ring-[--primary-color]"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                className="px-4 py-3 border rounded-md outline-none focus:ring-2 ring-[--primary-color]"
-              />
-              <input
-                type="password"
-                placeholder="Mot de passe"
-                className="px-4 py-3 border rounded-md outline-none focus:ring-2 ring-[--primary-color]"
-              />
-              <Button type="submit" className="bg-[--primary-color] mt-2">
-                S'inscrire
+
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 mt-8">
+              <Input placeholder="Nom" {...register("name")} />
+              {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
+
+              <Input placeholder="Email" {...register("email")} />
+              {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+
+              <Input type="password" placeholder="Mot de passe" {...register("password")} />
+              {errors.password && (
+                <p className="text-red-500 text-sm">{errors.password.message}</p>
+              )}
+
+              {error && <p className="text-red-500 text-sm">Une erreur est survenue</p>}
+
+              <Button type="submit" className="bg-[--primary-color] mt-2" disabled={isLoading}>
+                {isLoading ? "Création..." : "S'inscrire"}
               </Button>
             </form>
+
             <p className="mt-4 text-sm text-gray-600">
               Déjà inscrit ?{" "}
               <Link href="/signin" className="text-[--primary-color] font-semibold">
@@ -43,6 +74,8 @@ export default function SignUp() {
             </p>
           </div>
         </div>
+
+        {/* Image section */}
         <div className="w-full flex relative items-center justify-center h-[600px] -z-10">
           <div className="absolute top-0 left-0">
             <Image

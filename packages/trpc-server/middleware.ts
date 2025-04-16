@@ -1,7 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import { t } from "./trpc";
-//import { Role } from "./types";
-//import { authorizeUser } from "./util";
 
 export const isAuthed = () =>
   t.middleware(async ({ ctx, next }) => {

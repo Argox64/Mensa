@@ -1,8 +1,5 @@
 import { publicProcedure, router } from "../trpc";
-import { PrismaClient } from "@prisma/client";
 import { RecipeSchema, RecipeSchemaRequest } from "@cook/validations";
-
-const prisma = new PrismaClient();
 
 const generatePromptSystem = `Tu es un chef cuisinier professionnel qui donne des recettes détaillées et des conseils de cuisine.
 
@@ -15,7 +12,7 @@ Ta mission est de générer des recettes sous un format JSON strictement respect
 {
   "title": "Nom de la recette",
   "ingredients": [
-    { "name": "Nom de l'ingrédient", "quantity": "Quantité (sans unité)" }
+    { "name": "Nom de l'ingrédient", "quantity": Quantité (sans unité) }
   ],
   "steps": [
     "Étape 1",
@@ -37,9 +34,8 @@ Ta mission est de générer des recettes sous un format JSON strictement respect
 }`;
 const generatePromptUser = (tags: string[], preparationTime: number,) => `
   ### CONTRAINTES :
-  La recette doit respecter ces tags : ${tags.join(", ")}.
+  La recette doit respecter ces tags : ${tags ? tags.join(", ") : "-"}.
   avec un temps de préparation maximum de ${preparationTime} minutes.
-  Si tu ne peux pas respecter toutes ces contraintes, **réponds uniquement avec "ERROR"**.
 `;
 
 
@@ -57,7 +53,7 @@ export const recipeRouter = router({
             {
               role: "user",
               content: generatePromptUser(
-                input.tags || [],
+                ["Sans Lactose"],//input.tags || [],
                 30
               ),
             },
@@ -70,7 +66,7 @@ export const recipeRouter = router({
         try {
           generatedRecipe = JSON.parse(rawResponse);
 
-          // 🔍 Validation du format avec Zod
+          // Validation du format avec Zod
           RecipeSchema.parse(generatedRecipe);
         } catch (error) {
           console.error(
@@ -97,7 +93,7 @@ export const recipeRouter = router({
             return { error: "L'IA n'a pas renvoyé un JSON valide." };
           }
         }
-        const newRecipe = await prisma.recipe.create({
+        const newRecipe = await ctx.prisma.recipe.create({
             data: {
               name: generatedRecipe.title,
               creatorId: input.userId ?? undefined,

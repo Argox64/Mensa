@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
-import { User } from "../types/User";
-import { createClient } from "@cook/supabase";
+import { User } from "@cook/validations";
+import { createClient } from "@cook/supabasejs";
 
 export const authenticateToken = async (req: Request, res: Response) => {
   const authHeader = req.headers["authorization"];
