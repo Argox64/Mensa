@@ -11,6 +11,7 @@
     "@cook/supabasejs": "^1.0.0",
     "@cook/validations": "*",
     "@trpc/server": "^10.45.2",
+    "amazon-paapi": "^1.0.7",
     "jsonwebtoken": "^9.0.2",
     "openai": "^4.85.1"
   },

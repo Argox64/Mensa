@@ -17,6 +17,11 @@ import {
 import { useEffect, useState } from "react";
 import { SearchInput } from "./searchInput";
 import { useUser } from "@/contexts/UserContext";
+import { Badge } from "./ui/badge";
+import { X } from "lucide-react";
+import useGeneratedRecipeStore from "@/stores/generatedRecipeStore";
+import { Recipe } from "@cook/validations";
+import { useShallow } from "zustand/react/shallow";
 
 // Schéma de validation
 const formSchema = z.object({
@@ -30,8 +35,13 @@ const formSchema = z.object({
 });
 
 export default function RecipeForm() {
+    const { setRecipe } = useGeneratedRecipeStore(useShallow(state => ({
+        setRecipe: state.setRecipe,
+    })));
+
     const [customDietActive, setCustomDietActive] = useState(false);
     const { user } = useUser();
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
     const form = useForm({
         resolver: zodResolver(formSchema),
@@ -42,6 +52,18 @@ export default function RecipeForm() {
             maxPreparationAndCookingTime: 30,
         },
     });
+
+    const addItem = (item: string) => {
+        console.log(item);
+        if (!selectedItems.includes(item)) {
+            setSelectedItems([...selectedItems, item]);
+        }
+        console.log("Selected items:", selectedItems);
+    };
+
+    const removeItem = (item: string) => {
+        setSelectedItems(selectedItems.filter(i => i !== item));
+    };
 
     const { handleSubmit, control, watch } = form;
 
@@ -56,13 +78,14 @@ export default function RecipeForm() {
             const response = await mutation.mutateAsync({
                 userId: user.id,
                 action: "generate",
-                tags: ["Sans lactose"],//data.tags,
+                tags: selectedItems,
                 maxPreparationAndCookingTime: data.maxPreparationAndCookingTime,
             });
 
             if ("data" in response && response.data) {
                 // Traitez la recette générée
-                console.log("Recette générée :", response.data);
+                setRecipe(response.data.content as Recipe);
+                
             } else if ("error" in response && response.error) {
                 console.error("Erreur API :", response.error);
             }
@@ -101,7 +124,18 @@ export default function RecipeForm() {
 
                     <FormItem>
                         <FormLabel>Ajouter un tag :</FormLabel>
-                        <SearchInput />
+                        <SearchInput addItem={addItem} removeItem={removeItem} />
+                        <div className="mt-4 gap-2 flex flex-wrap">
+                            {selectedItems.map((badge, index) => (
+                                <Badge key={index} className="items-center px-3 py-1 gap-2">
+                                    {badge}
+                                    <X
+                                        className="w-4 h-4 cursor-pointer hover:text-red-500"
+                                        onClick={() => removeItem(selectedItems[index])}
+                                    />
+                                </Badge>
+                            ))}
+                        </div>
                     </FormItem>
 
                     <FormField

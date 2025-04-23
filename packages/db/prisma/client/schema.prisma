@@ -1,0 +1,94 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Recipe {
+  id               String          @id @default(uuid()) @db.Uuid
+  name             String
+  creatorId        String?         @db.Uuid
+  content          Json?
+  tags             String[]
+  totalCookingTime Int?
+  createdAt        DateTime        @default(now())
+  PlanningEntries  PlanningEntry[]
+
+  @@map("Recipe")
+}
+
+model PlanningEntry {
+  id         Int    @id @default(autoincrement())
+  userId     String @db.Uuid
+  recipeId   String @db.Uuid
+  nbPortions Int
+
+  Recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@map("PlanningEntry")
+}
+
+model Pantry {
+  id      Int    @id @default(autoincrement())
+  userId  String @unique @db.Uuid
+  content Json?
+
+  @@map("Pantry")
+}
+
+model Plans {
+  id           Int    @id @default(autoincrement())
+  name         String
+  price        Float
+  billingCycle String @db.Text
+
+  Subscriptions Subscriptions[]
+
+  @@map("Plans")
+}
+
+model Subscriptions {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  planId        Int?
+  status        Int
+  startDate     DateTime @default(now())
+  remainingDays Int?
+
+  Plan     Plans?     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  Payments Payments[]
+
+  @@map("Subscriptions")
+}
+
+model Payments {
+  id             Int      @id @default(autoincrement())
+  userId         String   @db.Uuid
+  subscriptionId String   @db.Uuid
+  amount         Float
+  paymentDate    DateTime @default(now())
+
+  Subscription Subscriptions @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@map("Payments")
+}
+
+model ShoppingAffiliation {
+  id          String  @id @default(uuid()) @db.Uuid
+  userId      String? @db.Uuid
+  trackingUrl String
+  amount      Float
+
+  @@map("ShoppingAffiliation")
+}

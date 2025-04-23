@@ -1,27 +1,19 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { tagsData } from "@/config/tagsData";
-import { X } from "lucide-react";
-import { Badge } from "./ui/badge";
 
-export function SearchInput() {
+interface SearchInputProps {
+    addItem: (item: string) => void;
+    removeItem: (item: string) => void;
+}
+
+export function SearchInput(SearchInputProps: SearchInputProps) {
+    const { addItem, removeItem } = SearchInputProps;
     const [search, setSearch] = useState("");
-    const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
     const filteredOptions = tagsData.filter(option =>
         option.label.toLowerCase().includes(search.toLowerCase())
     ).slice(0, 5);
-
-    const addItem = (item: string) => {
-        if (!selectedItems.includes(item)) {
-            setSelectedItems([...selectedItems, item]);
-        }
-        setSearch("");
-    };
-
-    const removeItem = (item: string) => {
-        setSelectedItems(selectedItems.filter(i => i !== item));
-    };
 
     return (
         <div className="w-full mx-auto">
@@ -45,24 +37,12 @@ export function SearchInput() {
                     )}
                     <div
                         className="p-2 text-blue-500 cursor-pointer hover:underline"
-                        onClick={() => addItem(search)}
+                        onClick={() => {addItem(search); setSearch("")}}
                     >
                         Ajouter "{search}"
                     </div>
                 </div>
             )}
-
-            <div className="mt-4 gap-2 flex flex-wrap">
-                {selectedItems.map((badge, index) => (
-                    <Badge key={index} className="items-center px-3 py-1 gap-2">
-                        {badge}
-                        <X
-                            className="w-4 h-4 cursor-pointer hover:text-red-500"
-                            onClick={() => removeItem(selectedItems[index])}
-                        />
-                    </Badge>
-                ))}
-            </div>
         </div>
     );
 }

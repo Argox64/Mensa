@@ -1,34 +1,37 @@
-import { z } from "./customs";
+import { z as zc } from "./customs";
+import { z } from "zod";
 
-export const RecipeSchema = z.object({
-  title: z.string(),
-  ingredients: z.array(z.object({ name: z.string(), quantity: z.number() })),
-  steps: z.array(z.string()),
-  nutrition: z.object({
-    calories: z.number(),
-    proteins: z.number(),
-    carbs: z.number(),
-    fats: z.number(),
+export const RecipeSchema = zc.object({
+  title: zc.string(),
+  ingredients: zc.array(zc.object({ name: zc.string(), quantity: zc.number() })),
+  steps: zc.array(zc.string()),
+  nutrition: zc.object({
+    calories: zc.number(),
+    proteins: zc.number(),
+    carbs: zc.number(),
+    fats: zc.number(),
   }),
-  notes: z.array(z.string()),
-  tags: z.array(z.string()),
-  preparationTime: z.number(),
-  cookingTime: z.number(),
-  timePerAdditionalPortion: z.number(),
+  notes: zc.array(zc.string()),
+  tags: zc.array(zc.string()).optional(),
+  preparationTime: zc.number(),
+  cookingTime: zc.number(),
+  timePerAdditionalPortion: zc.number(),
 });
 
-export const RecipeSchemaRequest = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("generate"),
-    userId: z.string().uuid(),
-    tags: z.array(z.string()).optional(),
-    maxPreparationAndCookingTime: z.number().optional(),
+export const RecipeSchemaRequest = zc.discriminatedUnion("action", [
+  zc.object({
+    action: zc.literal("generate"),
+    userId: zc.string().uuid(),
+    tags: zc.array(zc.string()).optional(),
+    maxPreparationAndCookingTime: zc.number().optional(),
   }),
-  z.object({
-    action: z.literal("modify"),
-    recipeId: z.string().uuid(),
-    userId: z.string().uuid(),
-    tags: z.array(z.string()).optional(),
-    maxPreparationAndCookingTime: z.number().optional(),
+  zc.object({
+    action: zc.literal("modify"),
+    recipeId: zc.string().uuid(),
+    userId: zc.string().uuid(),
+    tags: zc.array(zc.string()).optional(),
+    maxPreparationAndCookingTime: zc.number().optional(),
   }),
 ]);
+
+export type Recipe = z.infer<typeof RecipeSchema>;

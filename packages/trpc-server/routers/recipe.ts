@@ -1,12 +1,13 @@
+import { HttpError, INTERNAL_ERROR, InternalError } from "@cook/errors";
 import { publicProcedure, router } from "../trpc";
-import { RecipeSchema, RecipeSchemaRequest } from "@cook/validations";
+import { Recipe, RecipeSchema, RecipeSchemaRequest } from "@cook/validations";
 
 const generatePromptSystem = `Tu es un chef cuisinier professionnel qui donne des recettes détaillées et des conseils de cuisine.
 
 Les temps de cuisson et préparation sont en minutes.
 Les quantités d'ingrédients sont en grammes et les liquides en centilitres.
 La recette est toujours pour une portion.
-Ta mission est de générer des recettes sous un format JSON strictement respecté. Ta réponse **doit être uniquement du JSON valide** ou **"ERROR"** si tu ne peux pas répondre correctement.
+Ta mission est de générer des recettes sous un format JSON strictement respecté. Ta réponse **doit être uniquement du JSON valide** ou **"ERROR"** si tu ne peux pas répondre correctement (seulement en cas d'extremes necessités).
 
 ### FORMAT JSON STRICT :
 {
@@ -34,16 +35,20 @@ Ta mission est de générer des recettes sous un format JSON strictement respect
 }`;
 const generatePromptUser = (tags: string[], preparationTime: number,) => `
   ### CONTRAINTES :
-  La recette doit respecter ces tags : ${tags ? tags.join(", ") : "-"}.
-  avec un temps de préparation maximum de ${preparationTime} minutes.
+  ${tags.length !== 0 ? "La recette doit respecter ces tags :" + tags.join(", ")+ "." : "Pas de tags particuliers."}
+  Un temps de préparation maximum de ${preparationTime} minutes.
 `;
-
 
 export const recipeRouter = router({
   processRecipe: publicProcedure
     .input(RecipeSchemaRequest)
     .mutation(async ({ input, ctx }) => {
-      let generatedRecipe: any = null;
+
+      let generatedRecipe: Recipe | null = null;
+      console.log(generatePromptUser(
+        input.tags || [],
+        input.maxPreparationAndCookingTime || 30
+      ));
 
       if (input.action === "generate") {
         const response = await ctx.openai.chat.completions.create({
@@ -53,8 +58,8 @@ export const recipeRouter = router({
             {
               role: "user",
               content: generatePromptUser(
-                ["Sans Lactose"],//input.tags || [],
-                30
+                input.tags || [],
+                input.maxPreparationAndCookingTime || 30
               ),
             },
           ],
@@ -64,48 +69,27 @@ export const recipeRouter = router({
         const rawResponse = response.choices[0]?.message.content?.trim() ?? "";
 
         try {
-          generatedRecipe = JSON.parse(rawResponse);
+          generatedRecipe = JSON.parse(rawResponse) as Recipe;
 
           // Validation du format avec Zod
           RecipeSchema.parse(generatedRecipe);
-        } catch (error) {
-          console.error(
-            "Erreur JSON OpenAI:",
-            error,
-            "\nRéponse brute:",
-            rawResponse
-          );
-
-          const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            try {
-              generatedRecipe = JSON.parse(jsonMatch[0]);
-              generatedRecipe.tags = input.tags || [];
-              RecipeSchema.parse(generatedRecipe);
-            } catch (recoveryError) {
-              console.error("Impossible de corriger le JSON:", recoveryError);
-              return {
-                error:
-                  "L'IA n'a pas pu générer une recette valide. Essayez à nouveau.",
-              };
-            }
-          } else {
-            return { error: "L'IA n'a pas renvoyé un JSON valide." };
-          }
-        }
-        const newRecipe = await ctx.prisma.recipe.create({
+          const newRecipe = await ctx.prisma.recipe.create({
             data: {
               name: generatedRecipe.title,
               creatorId: input.userId ?? undefined,
-              content: JSON.parse(generatedRecipe),
-              tags: generatedRecipe.tags,
+              content: generatedRecipe,
+              tags: input.tags,
               totalCookingTime: generatedRecipe.preparationTime + generatedRecipe.cookingTime,
             },
           });
           return {
-            status : "Content created",
+            status : "201 Content created",
             data: newRecipe
           }
+        } catch (error) {
+          throw new InternalError(INTERNAL_ERROR.code, "Erreur lors de la génération de la recette.", {});
+        }
+        
       }
 
       return { error: "Action non supportée" };

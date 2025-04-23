@@ -42,6 +42,9 @@ export abstract class HttpError extends Error {
   }
 }
 
+/**
+ * 400 Bad Request
+ */
 export class BadRequestError extends HttpError {
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
@@ -58,6 +61,9 @@ export class BadRequestError extends HttpError {
   }
 }
 
+/**
+ * 401 Unauthorized
+ */
 export class UnauthorizedError extends HttpError {
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(erorCode: string, m: string, slots: Record<string, string>);
@@ -74,6 +80,9 @@ export class UnauthorizedError extends HttpError {
   }
 }
 
+/**
+ * 403 Forbidden
+ */
 export class ForbiddenError extends HttpError {
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
@@ -90,6 +99,9 @@ export class ForbiddenError extends HttpError {
   }
 }
 
+/**
+ * 404 Not Found
+ */
 export class NotFoundError extends HttpError {
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
@@ -106,6 +118,9 @@ export class NotFoundError extends HttpError {
   }
 }
 
+/**
+ * 405 Method Not Allowed
+ */
 export class MethodNotAllowedError extends HttpError {
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
@@ -122,6 +137,9 @@ export class MethodNotAllowedError extends HttpError {
   }
 }
 
+/**
+ * 409 Conflict
+ */
 export class ConflictError extends HttpError {
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
@@ -138,6 +156,9 @@ export class ConflictError extends HttpError {
   }
 }
 
+/**
+ * 422 Unprocessable Entity
+ */
 export class UnprocessableEntityError extends HttpError {
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
@@ -154,6 +175,9 @@ export class UnprocessableEntityError extends HttpError {
   }
 }
 
+/**
+ * 500 Internal Server Error
+ */
 export class InternalError extends HttpError {
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);

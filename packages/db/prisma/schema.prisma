@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "./client"
 }
 
 datasource db {
@@ -84,8 +85,8 @@ model Payments {
 
 model ShoppingAffiliation {
   id          String  @id @default(uuid()) @db.Uuid
-  userId      String  @db.Uuid
-  trackingId  Int
+  userId      String?  @db.Uuid
+  trackingUrl String
   amount      Float
   
   @@map("ShoppingAffiliation")
