@@ -1,6 +1,7 @@
-import { HttpError, INTERNAL_ERROR, InternalError } from "@cook/errors";
+import { HttpError, INTERNAL_ERROR, InternalError, UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError } from "@cook/errors";
 import { publicProcedure, router } from "../trpc";
 import { Recipe, RecipeSchema, RecipeSchemaRequest } from "@cook/validations";
+import { TRPCError } from "@trpc/server";
 
 const generatePromptSystem = `Tu es un chef cuisinier professionnel qui donne des recettes détaillées et des conseils de cuisine.
 
@@ -33,10 +34,11 @@ Ta mission est de générer des recettes sous un format JSON strictement respect
   "cookingTime": 10,
   "timePerAdditionalPortion": 2
 }`;
-const generatePromptUser = (tags: string[], preparationTime: number,) => `
+const generatePromptUser = (tags: string[], preparationTime: number, description: string) => `
   ### CONTRAINTES :
   ${tags.length !== 0 ? "La recette doit respecter ces tags :" + tags.join(", ")+ "." : "Pas de tags particuliers."}
   Un temps de préparation maximum de ${preparationTime} minutes.
+  ${description !== "" ? "Voici une courte description de la recette: " + description + "." : "" }
 `;
 
 export const recipeRouter = router({
@@ -45,10 +47,8 @@ export const recipeRouter = router({
     .mutation(async ({ input, ctx }) => {
 
       let generatedRecipe: Recipe | null = null;
-      console.log(generatePromptUser(
-        input.tags || [],
-        input.maxPreparationAndCookingTime || 30
-      ));
+      let user = ctx.user;
+      if(!user) throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
 
       if (input.action === "generate") {
         const response = await ctx.openai.chat.completions.create({
@@ -59,7 +59,8 @@ export const recipeRouter = router({
               role: "user",
               content: generatePromptUser(
                 input.tags || [],
-                input.maxPreparationAndCookingTime || 30
+                input.maxPreparationAndCookingTime || 30,
+                input.description || ""
               ),
             },
           ],
@@ -76,7 +77,7 @@ export const recipeRouter = router({
           const newRecipe = await ctx.prisma.recipe.create({
             data: {
               name: generatedRecipe.title,
-              creatorId: input.userId ?? undefined,
+              creatorId: user.id,
               content: generatedRecipe,
               tags: input.tags,
               totalCookingTime: generatedRecipe.preparationTime + generatedRecipe.cookingTime,

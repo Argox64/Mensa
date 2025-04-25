@@ -190,7 +190,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\NodeJs\\Others projects\\mensa\\packages\\db\\prisma\\client",
+      "value": "C:\\Users\\Fred\\Documents\\VS CODE\\Mensa\\packages\\db\\prisma\\client",
       "fromEnvVar": null
     },
     "config": {
@@ -204,7 +204,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "D:\\NodeJs\\Others projects\\mensa\\packages\\db\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\Fred\\Documents\\VS CODE\\Mensa\\packages\\db\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
@@ -218,11 +218,12 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
+  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
         "fromEnvVar": "DATABASE_URL",
-        "value": "postgresql://postgres.lcvqngkfyfnfmvkflyip:DmMJCPw12pY6xLTL@aws-0-eu-west-3.pooler.supabase.com:6543/postgres?pgbouncer=true"
+        "value": null
       }
     }
   },

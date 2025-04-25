@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { trpcClient } from "@cook/trpc-client/client";
@@ -14,7 +14,6 @@ import {
     FormControl,
     FormMessage,
 } from "@/components/ui/form";
-import { useEffect, useState } from "react";
 import { SearchInput } from "./searchInput";
 import { useUser } from "@/contexts/UserContext";
 import { Badge } from "./ui/badge";
@@ -26,8 +25,7 @@ import { useShallow } from "zustand/react/shallow";
 // Schéma de validation
 const formSchema = z.object({
     description: z.string().min(5, "La description doit comporter au moins 5 caractères."),
-    dietType: z.string(),
-    customDiet: z.string(),
+    tags: z.string().array(),
     maxPreparationAndCookingTime: z
         .number({ invalid_type_error: "Veuillez entrer un nombre." })
         .min(1, "Le temps doit être au moins de 1 minute.")
@@ -38,45 +36,45 @@ export default function RecipeForm() {
     const { setRecipe } = useGeneratedRecipeStore(useShallow(state => ({
         setRecipe: state.setRecipe,
     })));
-
-    const [customDietActive, setCustomDietActive] = useState(false);
+    
     const { user } = useUser();
-    const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
     const form = useForm({
         resolver: zodResolver(formSchema),
         defaultValues: {
             description: "",
-            dietType: "none",
-            customDiet: "",
+            tags: [],
             maxPreparationAndCookingTime: 30,
         },
     });
 
+    const { handleSubmit, control, watch, setValue } = form;
+    const selectedItems =  watch("tags") || [];
+
     const addItem = (item: string) => {
-        console.log(item);
         if (!selectedItems.includes(item)) {
-            setSelectedItems([...selectedItems, item]);
+            const updated = [...selectedItems, item];
+            setValue("tags", updated);
         }
-        console.log("Selected items:", selectedItems);
     };
+
 
     const removeItem = (item: string) => {
-        setSelectedItems(selectedItems.filter(i => i !== item));
+        const updated = selectedItems.filter((i: string) => i !== item);
+        setValue("tags", updated);
     };
 
-    const { handleSubmit, control, watch } = form;
 
     const mutation = trpcClient.recipes.processRecipe.useMutation();
 
     const onSubmit = async (data: any) => {
-        if (!user) {
+        /*if (!user) {
             console.error("User invalid");
             return;
-        }
+        }*/
         try {
             const response = await mutation.mutateAsync({
-                userId: user.id,
+                description: data.description,
                 action: "generate",
                 tags: selectedItems,
                 maxPreparationAndCookingTime: data.maxPreparationAndCookingTime,
@@ -85,7 +83,7 @@ export default function RecipeForm() {
             if ("data" in response && response.data) {
                 // Traitez la recette générée
                 setRecipe(response.data.content as Recipe);
-                
+
             } else if ("error" in response && response.error) {
                 console.error("Erreur API :", response.error);
             }
@@ -93,11 +91,6 @@ export default function RecipeForm() {
             console.error("Erreur lors de la génération de la recette :", error);
         }
     };
-
-    const selectedDiet = watch("dietType");
-    useEffect(() => {
-        setCustomDietActive(selectedDiet === "other");
-    }, [selectedDiet]);
 
     return (
         <div className="relative w-full mx-auto min-w-[500px]">
@@ -124,18 +117,28 @@ export default function RecipeForm() {
 
                     <FormItem>
                         <FormLabel>Ajouter un tag :</FormLabel>
-                        <SearchInput addItem={addItem} removeItem={removeItem} />
-                        <div className="mt-4 gap-2 flex flex-wrap">
-                            {selectedItems.map((badge, index) => (
-                                <Badge key={index} className="items-center px-3 py-1 gap-2">
-                                    {badge}
-                                    <X
-                                        className="w-4 h-4 cursor-pointer hover:text-red-500"
-                                        onClick={() => removeItem(selectedItems[index])}
-                                    />
-                                </Badge>
-                            ))}
-                        </div>
+
+                        <Controller
+                            control={control}
+                            name="tags"
+                            defaultValue={[]}
+                            render={() => (
+                                <>
+                                    <SearchInput addItem={addItem} removeItem={removeItem} />
+                                    <div className="mt-4 gap-2 flex flex-wrap">
+                                        {selectedItems.map((badge: string, index: number) => (
+                                            <Badge key={index} className="items-center px-3 py-1 gap-2">
+                                                {badge}
+                                                <X
+                                                    className="w-4 h-4 cursor-pointer hover:text-red-500"
+                                                    onClick={() => removeItem(badge)}
+                                                />
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        />
                     </FormItem>
 
                     <FormField

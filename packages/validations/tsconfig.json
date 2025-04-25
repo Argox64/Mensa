@@ -1,8 +1,6 @@
 {
   "extends": "@cook/typescript-config/base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "moduleResolution": "node",
     "target": "ESNext",
     "baseUrl": "./",
     "outDir": "./dist",

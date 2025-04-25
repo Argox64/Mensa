@@ -21,9 +21,9 @@ export const RecipeSchema = zc.object({
 export const RecipeSchemaRequest = zc.discriminatedUnion("action", [
   zc.object({
     action: zc.literal("generate"),
-    userId: zc.string().uuid(),
     tags: zc.array(zc.string()).optional(),
     maxPreparationAndCookingTime: zc.number().optional(),
+    description: zc.string().optional()
   }),
   zc.object({
     action: zc.literal("modify"),
