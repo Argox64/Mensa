@@ -1,6 +1,6 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { trpcClient } from "@cook/trpc-client/client";
@@ -14,13 +14,11 @@ import {
     FormControl,
     FormMessage,
 } from "@/components/ui/form";
-import { SearchInput } from "./searchInput";
 import { useUser } from "@/contexts/UserContext";
-import { Badge } from "./ui/badge";
-import { X } from "lucide-react";
 import useGeneratedRecipeStore from "@/stores/generatedRecipeStore";
 import { Recipe } from "@cook/validations";
 import { useShallow } from "zustand/react/shallow";
+import TagsFormItem from "./tagsFormItem";
 
 // Schéma de validation
 const formSchema = z.object({
@@ -31,6 +29,8 @@ const formSchema = z.object({
         .min(1, "Le temps doit être au moins de 1 minute.")
         .optional()
 });
+
+type FormSchema = z.infer<typeof formSchema>;
 
 export default function RecipeForm() {
     const { setRecipe } = useGeneratedRecipeStore(useShallow(state => ({
@@ -49,7 +49,7 @@ export default function RecipeForm() {
     });
 
     const { handleSubmit, control, watch, setValue } = form;
-    const selectedItems =  watch("tags") || [];
+    const selectedItems = watch("tags") || [];
 
     const addItem = (item: string) => {
         if (!selectedItems.includes(item)) {
@@ -58,20 +58,14 @@ export default function RecipeForm() {
         }
     };
 
-
     const removeItem = (item: string) => {
         const updated = selectedItems.filter((i: string) => i !== item);
         setValue("tags", updated);
     };
 
-
     const mutation = trpcClient.recipes.processRecipe.useMutation();
 
-    const onSubmit = async (data: any) => {
-        /*if (!user) {
-            console.error("User invalid");
-            return;
-        }*/
+    const onSubmit = async (data: FormSchema) => {
         try {
             const response = await mutation.mutateAsync({
                 description: data.description,
@@ -82,7 +76,7 @@ export default function RecipeForm() {
 
             if ("data" in response && response.data) {
                 // Traitez la recette générée
-                setRecipe(response.data.content as Recipe);
+                setRecipe(response.data as Recipe);
 
             } else if ("error" in response && response.error) {
                 console.error("Erreur API :", response.error);
@@ -115,31 +109,12 @@ export default function RecipeForm() {
                         )}
                     />
 
-                    <FormItem>
-                        <FormLabel>Ajouter un tag :</FormLabel>
-
-                        <Controller
-                            control={control}
-                            name="tags"
-                            defaultValue={[]}
-                            render={() => (
-                                <>
-                                    <SearchInput addItem={addItem} removeItem={removeItem} />
-                                    <div className="mt-4 gap-2 flex flex-wrap">
-                                        {selectedItems.map((badge: string, index: number) => (
-                                            <Badge key={index} className="items-center px-3 py-1 gap-2">
-                                                {badge}
-                                                <X
-                                                    className="w-4 h-4 cursor-pointer hover:text-red-500"
-                                                    onClick={() => removeItem(badge)}
-                                                />
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        />
-                    </FormItem>
+                    {/* Tags */}
+                    <TagsFormItem control={control}
+                        addItem={addItem}
+                        removeItem={removeItem}
+                        selectedItems={selectedItems}
+                    />
 
                     <FormField
                         control={control}
@@ -162,7 +137,6 @@ export default function RecipeForm() {
                             </FormItem>
                         )}
                     />
-
 
                     {/* Bouton Générer */}
                     <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">

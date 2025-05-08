@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug API",
+        "type": "node-terminal",
+        "request": "launch",
+        "command": "npm run dev",
+        "cwd": "${workspaceFolder}/apps/api"
+      },
+      {
+        "name": "Debug Web",
+        "type": "node-terminal",
+        "request": "launch",
+        "command": "npm run dev",
+        "cwd": "${workspaceFolder}/apps/web"
+      }
+    ],
+    "compounds": [
+      {
+        "name": "Debug All",
+        "configurations": ["Debug API", "Debug Web"]
+      }
+    ]
+  }

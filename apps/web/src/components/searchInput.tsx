@@ -3,12 +3,13 @@ import { Input } from "@/components/ui/input";
 import { tagsData } from "@/config/tagsData";
 
 interface SearchInputProps {
+    placeholder?: string;
     addItem: (item: string) => void;
     removeItem: (item: string) => void;
 }
 
 export function SearchInput(SearchInputProps: SearchInputProps) {
-    const { addItem, removeItem } = SearchInputProps;
+    const { placeholder, addItem, removeItem } = SearchInputProps;
     const [search, setSearch] = useState("");
 
     const filteredOptions = tagsData.filter(option =>
@@ -18,7 +19,7 @@ export function SearchInput(SearchInputProps: SearchInputProps) {
     return (
         <div className="w-full mx-auto">
             <Input
-                placeholder="Allergies, intolérances, régimes..."
+                placeholder={placeholder || "Ajouter un tag"}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
             />

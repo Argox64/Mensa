@@ -12,6 +12,7 @@
     "@cook/validations": "*",
     "@trpc/server": "^10.45.2",
     "amazon-paapi": "^1.0.7",
+    "date-fns": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
     "openai": "^4.85.1"
   },

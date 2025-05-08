@@ -1,10 +1,21 @@
+import { off } from "process";
 import { z as zc } from "./customs";
 import { z } from "zod";
 
-export const RecipeSchema = zc.object({
+export const IngredientSchema = zc.object({ name: zc.string(), quantity: zc.number() })
+
+export const RecipeListSchema = zc.string().array();
+
+export const RecipeLiteSchema = zc.object({
+  id: zc.string().uuid(),
   title: zc.string(),
-  ingredients: zc.array(zc.object({ name: zc.string(), quantity: zc.number() })),
+  ingredients: zc.array(IngredientSchema),
   steps: zc.array(zc.string()),
+  tags: zc.array(zc.string()).optional(),
+  preparationTime: zc.number(),
+  cookingTime: zc.number(),
+});
+export const RecipeSchema = RecipeLiteSchema.extend({
   nutrition: zc.object({
     calories: zc.number(),
     proteins: zc.number(),
@@ -12,26 +23,58 @@ export const RecipeSchema = zc.object({
     fats: zc.number(),
   }),
   notes: zc.array(zc.string()),
-  tags: zc.array(zc.string()).optional(),
-  preparationTime: zc.number(),
-  cookingTime: zc.number(),
   timePerAdditionalPortion: zc.number(),
 });
 
+export const NewRecipeSchema = RecipeSchema.omit({
+  id: true
+});
+
+export const GenerateRecipeSchemaRequest = zc.object({
+  action: zc.literal("generate"),
+  tags: zc.array(zc.string()).optional(),
+  maxPreparationAndCookingTime: zc.number().optional(),
+  description: zc.string().optional()
+})
+
+export const ModifyRecipeSchemaRequest = zc.object({
+  action: zc.literal("modify"),
+  recipeId: zc.string().uuid(),
+  userId: zc.string().uuid(),
+  tags: zc.array(zc.string()).optional(),
+  maxPreparationAndCookingTime: zc.number().optional(),
+});
+
 export const RecipeSchemaRequest = zc.discriminatedUnion("action", [
-  zc.object({
-    action: zc.literal("generate"),
-    tags: zc.array(zc.string()).optional(),
-    maxPreparationAndCookingTime: zc.number().optional(),
-    description: zc.string().optional()
-  }),
-  zc.object({
-    action: zc.literal("modify"),
-    recipeId: zc.string().uuid(),
-    userId: zc.string().uuid(),
-    tags: zc.array(zc.string()).optional(),
-    maxPreparationAndCookingTime: zc.number().optional(),
-  }),
+  GenerateRecipeSchemaRequest,
+  ModifyRecipeSchemaRequest,
 ]);
 
+export const RecipePlannerSchemaRequest = zc.object({
+  /*recipes : zc.object({
+    description: zc.cstring().optional(),
+    tags: zc.string().array().optional(),
+    maxPreparationAndCookingTime: zc.number().optional()
+  }).array().min(1)*/
+  tags: zc.string().array().optional(),
+  maxPreparationAndCookingTime: zc.number().optional(),
+  count: zc.number().min(1).max(30),
+})
+
+
+export const GetRecipesSchemaRequest = zc.object({
+  searchTerm: zc.string().nullable(),
+  offset: zc.number().min(0).default(0),
+  limit: zc.number().min(1).max(100).default(10),
+})
+
+export type Ingredient = z.infer<typeof IngredientSchema>;
+export type RecipeLite = z.infer<typeof RecipeLiteSchema>;
 export type Recipe = z.infer<typeof RecipeSchema>;
+export type NewRecipe = z.infer<typeof NewRecipeSchema>;
+export type RecipeRequest = z.infer<typeof RecipeSchemaRequest>
+export type RecipePlannerRequest = z.infer<typeof RecipePlannerSchemaRequest>
+export type GenerateRecipeRequest = z.infer<typeof GenerateRecipeSchemaRequest>;
+export type ModifyRecipeRequest = z.infer<typeof ModifyRecipeSchemaRequest>;
+export type RecipeRequestAction = z.infer<typeof RecipeSchemaRequest>["action"];
+export type GetRecipesRequest = z.infer<typeof GetRecipesSchemaRequest>;
