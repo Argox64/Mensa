@@ -2,30 +2,40 @@
 "use client";
 
 import { createClient } from "@cook/supabase";
-import { User } from "@cook/validations";
-import { createContext, useContext, useEffect, useState } from "react";
+import { trpcClient } from "@cook/trpc-client/client";
+import { UserLite } from "@cook/validations";
+import { createContext, useContext, useState } from "react";
 
 interface UserContextType {
-  user: User | null;
-  loading: boolean;
+  user: UserLite | null;
+  isLoading: boolean;
   signOut: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserLite | null>(null);
   const supabase = createClient();
 
-  useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
-      setLoading(false);
-    };
-    getUser();
-  }, []);
+  const { data, isLoading } = trpcClient.users.me.useQuery(undefined, {
+    enabled: true,
+    refetchOnWindowFocus: false,
+    onSuccess: (user) => {
+      console.log("User fetched from server:", user);
+      if (user) {
+        setUser({
+          id: user.id,
+          email: user.email || "",
+          aud: user.aud,
+        });
+      }
+    },
+    onError: (error) => {
+      console.error("Error fetching user:", error);
+      setUser(null);
+    },
+  });
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -33,7 +43,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, loading, signOut }}>
+    <UserContext.Provider value={{ user, isLoading, signOut }}>
       {children}
     </UserContext.Provider>
   );

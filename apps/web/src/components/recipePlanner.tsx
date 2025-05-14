@@ -14,7 +14,6 @@ import {
   endOfMonth,
   addMonths,
   subMonths,
-  set,
 } from "date-fns"
 import { fr } from "date-fns/locale"
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react"
@@ -22,10 +21,9 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DayCard } from "@/components/dayCard"
-import { RecipeDialog } from "@/components/recipeDialog"
 import { WeekView } from "@/components/weekView"
 import { MonthView } from "@/components/monthView"
-import type { GetPlannerEntriesResponse, Recipe, RecipeLite, PlannerEntry } from "@cook/validations"
+import type { GetPlannerEntriesResponse, PlannerEntry } from "@cook/validations"
 import { trpcClient } from "@cook/trpc-client/client"
 import { usePlannerEntriesStore } from "@/stores/plannerEntries"
 import { useShallow } from "zustand/react/shallow"
@@ -44,17 +42,6 @@ export function DailyRecipePlanner() {
   const [selectedDateForAdd, setSelectedDateForAdd] = useState<Date>(new Date())
 
   const utils = trpcClient.useUtils();
-  const getDays = trpcClient.planner.getDays.useQuery({
-    startDate: format(currentDate, "yyyy-MM-dd"),
-    days: viewMode === "day" ? 1 : viewMode === "week" ? 7 : 31,
-  }, {
-    enabled: !!currentDate,
-    onSuccess: (data) => {
-      console.log("Data fetched:", data)
-      setEntriesData(data)
-    },
-  });
-
   const removeEntry = trpcClient.planner.deleteEntry.useMutation();
 
   const setEntriesData = (data : GetPlannerEntriesResponse) => {
@@ -102,6 +89,24 @@ export function DailyRecipePlanner() {
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
+
+  const getDays = trpcClient.planner.getDays.useQuery({
+    startDate: format(
+      viewMode === "day"
+        ? currentDate
+        : viewMode === "week"
+        ? weekStart
+        : monthStart,
+      "yyyy-MM-dd"
+    ),
+    days: viewMode === "day" ? 1 : viewMode === "week" ? 7 : 31,
+  }, {
+    enabled: !!currentDate,
+    onSuccess: (data) => {
+      console.log("Data fetched:", data)
+      setEntriesData(data)
+    },
+  });
 
   // Gestion des recettes
   const handleAddRecipe = (date?: Date) => {
@@ -163,6 +168,7 @@ export function DailyRecipePlanner() {
     handleNext = handleNextMonth
   }
 
+  console.log("Current date:", currentDate)
   return (
     <div className="space-y-6">
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)} className="w-full">
@@ -221,14 +227,6 @@ export function DailyRecipePlanner() {
           />
         </TabsContent>
       </Tabs>
-
-      {/*<RecipeDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        entry={editingRecipe}
-        onSave={handleSaveRecipe}
-        date={selectedDateForAdd}
-      />*/}
     </div>
   )
 }

@@ -14,12 +14,18 @@ export const Provider: FC<{ children: React.ReactNode }> = ({ children }: { chil
       links: [
         httpBatchLink({
           url: process.env.NEXT_PUBLIC_API_URL!,
-          async headers() {
+          fetch(url, options) {
+            return fetch(url, {
+              ...options,
+              credentials: 'include',
+            })
+          },
+          /*async headers() {
             const token = await createClient().auth.getSession().then(({ data }) => data.session?.access_token);
             return {
               authorization: token ? `Bearer ${token}` : ''
             }
-          }
+          }*/
         }),
       ],
     }),

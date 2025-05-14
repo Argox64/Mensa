@@ -5,91 +5,213 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["typedSql"]
 }
 
 datasource db {
-    provider  = "postgresql"
-    url       = env("DATABASE_URL")
-    directUrl = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Recipe {
-  id              String   @id @default(uuid()) @db.Uuid
-  name            String
-  creatorId       String?  @db.Uuid
-  content         Json
-  tags            String[]
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String
+  description      String
+  creatorId        String  @db.Uuid
+  content          Json
+  tags             String[]
   totalCookingTime Int?
-  createdAt       DateTime @default(now())
+  difficulty       Int      @default(0) // 0 = very easy, 1 = easy, 2 = medium, 3 = hard, 4 = very hard
+  imageUrl         String?
+  likesCount       Int      @default(0)
+
+  createdAt DateTime @default(now())
+
   PlanningEntries PlanningEntry[]
+  comments       Comment[]
+  Creator User @relation(fields: [creatorId], references: [id])
+  Likes   Likes[]
 
   @@map("Recipe")
 }
 
 model PlanningEntry {
-  id        Int    @id @default(autoincrement())
-  userId    String @db.Uuid
-  recipeId  String @db.Uuid
-  mealType  String @default("")
-  date      DateTime
+  id         Int      @id @default(autoincrement())
+  userId     String   @db.Uuid
+  recipeId   String   @db.Uuid
+  mealType   String   @default("")
+  date       DateTime
   nbPortions Int
 
-  Recipe    Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  Recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("PlanningEntry")
 }
 
-model Pantry {
-  id      Int    @id @default(autoincrement())
-  userId  String @unique @db.Uuid
-  content Json?
-  
-  @@map("Pantry")
-}
-
 model Plans {
-  id           Int     @id @default(autoincrement())
+  id           Int    @id @default(autoincrement())
   name         String
-  price        Float
-  billingCycle String @db.Text
+  description  String
+  features     String[]
+  monthlyPrice Int  @default(0)
+  yearlyPrice  Int  @default(0)
 
   Subscriptions Subscriptions[]
+
   @@map("Plans")
 }
 
 model Subscriptions {
-  id            String  @id @default(uuid()) @db.Uuid
-  userId        String  @db.Uuid
-  planId        Int?    
-  status        Int
-  startDate     DateTime @default(now())
-  remainingDays Int?
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  planId          Int?
+  status          SubscriptionStatus
+  billingCycle    BillingCycle
+  startDate       DateTime
+  endDate         DateTime?
+  nextBillingDate DateTime?
+  canceledAt      DateTime?
 
-  Plan         Plans? @relation(fields: [planId], references: [id], onDelete: Cascade)
-  Payments     Payments[]
+  Plan            Plans?   @relation(fields: [planId], references: [id])
+  Payments        Payments[]
+  User            User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
 
   @@map("Subscriptions")
 }
 
 model Payments {
-  id             Int     @id @default(autoincrement()) 
-  userId         String  @db.Uuid
-  subscriptionId String  @db.Uuid
-  amount         Float
-  paymentDate    DateTime @default(now())
+  id                    Int         @id @default(autoincrement())
+  userId                String      @db.Uuid
+  subscriptionId        String?     @db.Uuid
+  amount                Int     // e.g : 4502 = 45.02
+  currency              String      @default("EUR")
+  status                PaymentStatus
+  paymentMethod         PaymentMethodType
+  paymentMethodDetails  Json?            // Stocke les détails du moyen de paiement
+  invoiceNumber         String?     @unique
 
-  Subscription  Subscriptions @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  User                  User                @relation(fields: [userId], references: [id])
+  subscription          Subscriptions?      @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@index([status])
 
   @@map("Payments")
 }
 
+model Comment {
+  id       String @id @default(uuid()) @db.Uuid
+  userId   String @db.Uuid
+  recipeId String @db.Uuid
+  content  String @db.Text
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id])
+  recipe Recipe @relation(fields: [recipeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([recipeId])
+}
+
 model ShoppingAffiliation {
   id          String  @id @default(uuid()) @db.Uuid
-  userId      String?  @db.Uuid
+  userId      String? @db.Uuid
   trackingUrl String
   amount      Float
-  
+
   @@map("ShoppingAffiliation")
+}
+
+model User {
+  id                 String                @id @db.Uuid //use UUID of supabase
+  username           String
+  dietaryPreferences String[]
+  notificationSettings NotificationSettings?
+
+  // Relations
+  createdRecipes    Recipe[]
+  planningEntries   PlanningEntry[]
+  subscriptions     Subscriptions[]
+  payments          Payments[]
+  comments          Comment[]
+  likes             Likes[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("User")
+}
+
+model Likes {
+  userId   String @db.Uuid
+  recipeId String @db.Uuid
+  createdAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  recipe   Recipe   @relation(fields: [recipeId], references: [id])
+
+  @@id([userId, recipeId])
+  
+  @@map("Likes")
+}
+
+
+model NotificationSettings {
+  id                String              @id @default(uuid()) @db.Uuid
+  userId            String              @unique @db.Uuid
+  emailEnabled      Boolean             @default(true)
+  pushEnabled       Boolean             @default(true)
+  weeklyDigest      Boolean             @default(true)
+  newFeatures       Boolean             @default(true)
+  
+  // Relation
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@map("NotificationSettings")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PENDING
+  CANCELED
+  PAST_DUE
+  TRIALING
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethodType {
+  CREDIT_CARD
+  PAYPAL
+  BANK_TRANSFER
 }

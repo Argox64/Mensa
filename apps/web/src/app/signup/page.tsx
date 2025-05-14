@@ -10,9 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { trpcClient } from "@cook/trpc-client/client";
-import { SignUpRequest } from "@cook/validations";
-
-type SignUpData = z.infer<typeof SignUpRequest>;
+import { SignUpSchemaRequest, SignUp as SignUpData } from "@cook/validations";
 
 export default function SignUp() {
   const router = useRouter();
@@ -22,7 +20,7 @@ export default function SignUp() {
     handleSubmit,
     formState: { errors },
   } = useForm<SignUpData>({
-    resolver: zodResolver(SignUpRequest),
+    resolver: zodResolver(SignUpSchemaRequest),
   });
 
   const { mutate: signup, isLoading, error } = trpcClient.users.signUp.useMutation({

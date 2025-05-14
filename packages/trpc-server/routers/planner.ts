@@ -1,15 +1,15 @@
-import { CreatePlannerEntryBatchSchemaRequest, CreatePlannerEntrySchemaRequest, DeletePlannerEntrySchemaRequest, GetPlannerEntriesSchemaRequest, GetPlannerEntriesSchemaResponse, GetPlannerEntriesResponse, Recipe, PlannerEntrySchema } from "@cook/validations";
+import { CreatePlannerEntryBatchSchemaRequest, CreatePlannerEntrySchemaRequest, DeletePlannerEntrySchemaRequest, GetPlannerEntriesSchemaRequest, GetPlannerEntriesSchemaResponse, GetPlannerEntriesResponse, RecipeContent, UserLite } from "@cook/validations";
 import { privateProcedure, router } from "../trpc";
 import { UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError, NotFoundError, NOT_FOUND_RESOURCE_ERROR } from "@cook/errors";
-import { addDays, format, parse, startOfDay } from "date-fns"
+import { addDays, parse, startOfDay } from "date-fns"
+import { dateToyyyyMMddFormat } from "../utils/date";
 
 export const plannerRouter = router({
     getDays: privateProcedure
         .input(GetPlannerEntriesSchemaRequest)
         .output(GetPlannerEntriesSchemaResponse)
         .query(async ({ input, ctx }) => {
-            let user = ctx.user;
-            if (!user) throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
+            const user = ctx.user as UserLite;
 
             const startDate = startOfDay(new Date(input.startDate));
 
@@ -27,17 +27,18 @@ export const plannerRouter = router({
             });
 
             return planner.map((entry) => {
-                const recipe = entry.Recipe.content as Recipe;
+                const recipe = entry.Recipe.content as RecipeContent;
 
                 return {
                     id: entry.id,
                     userId: entry.userId,
-                    date: format(entry.date, "yyyy-MM-dd"),
+                    date: dateToyyyyMMddFormat(entry.date),
                     nbPortions: entry.nbPortions,
                     mealType: entry.mealType,
                     recipe: {
                         id: entry.Recipe.id,
                         title: entry.Recipe.name,
+                        description: entry.Recipe.description,
                         tags: entry.Recipe.tags,
                         ingredients: recipe.ingredients,
                         steps: recipe.steps,
@@ -46,7 +47,12 @@ export const plannerRouter = router({
                         cookingTime: recipe.cookingTime,
                         nutrition: recipe.nutrition,
                         notes: recipe.notes || [],
+                        imageUrl: entry.Recipe.imageUrl,
                         timePerAdditionalPortion: recipe.timePerAdditionalPortion || 0,
+                        difficulty: recipe.difficulty,
+                        creatorId: entry.Recipe.creatorId,
+                        likesCount: entry.Recipe.likesCount,
+                        createdAt: dateToyyyyMMddFormat(entry.Recipe.createdAt),
                     }
                 }
             }) as GetPlannerEntriesResponse;
@@ -71,8 +77,7 @@ export const plannerRouter = router({
     deleteEntry: privateProcedure
         .input(DeletePlannerEntrySchemaRequest)
         .mutation(async ({ input, ctx }) => {
-            let user = ctx.user;
-            if (!user) throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
+            const user = ctx.user as UserLite;
 
             const plannerEntry = await ctx.prisma.planningEntry.findFirst({
                 where: {
@@ -96,8 +101,7 @@ export const plannerRouter = router({
     createBatchEntries: privateProcedure
         .input(CreatePlannerEntryBatchSchemaRequest)
         .mutation(async ({ input, ctx }) => {
-            let user = ctx.user;
-            if (!user) throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
+            const user = ctx.user as UserLite;
 
             const plannerEntries = await ctx.prisma.planningEntry.createMany({
                 data: input.map((entry) => ({

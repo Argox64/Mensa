@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { z as zc } from "./customs";
-import { RecipeLiteSchema, RecipeSchema } from "./recipe";
+import { RecipeSchema } from "./recipe";
 
 export const PlannerEntrySchema = zc.object({   
     id: zc.number(),
@@ -16,7 +16,7 @@ export const PlannerEntrySchema = zc.object({
         }),
     nbPortions: zc.number().min(1).max(12).default(1),
     mealType: zc.string(),
-    recipe : RecipeLiteSchema
+    recipe : RecipeSchema
 })
 
 export const GetPlannerEntriesSchemaRequest = zc.object({

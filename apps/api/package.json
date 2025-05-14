@@ -16,13 +16,16 @@
     "license": "ISC",
     "description": "",
     "dependencies": {
+        "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
         "dotenv": "^16.4.7",
-        "express": "^4.21.2"
+        "express": "^4.21.2",
+        "stripe": "^18.1.0"
     },
     "devDependencies": {
         "@cook/eslint-config": "*",
         "@cook/typescript-config": "*",
+        "@types/cookie-parser": "^1.4.8",
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.0",
         "cross-env": "^7.0.3",

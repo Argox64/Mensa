@@ -1,33 +1,46 @@
-import { off } from "process";
+import { CommentSchema } from "./comment";
 import { z as zc } from "./customs";
-import { z } from "zod";
+import { date, z } from "zod";
 
 export const IngredientSchema = zc.object({ name: zc.string(), quantity: zc.number() })
 
 export const RecipeListSchema = zc.string().array();
 
-export const RecipeLiteSchema = zc.object({
-  id: zc.string().uuid(),
+export const RecipeContentSchema = zc.object({
   title: zc.string(),
+  description: zc.string(),
   ingredients: zc.array(IngredientSchema),
   steps: zc.array(zc.string()),
-  tags: zc.array(zc.string()).optional(),
   preparationTime: zc.number(),
   cookingTime: zc.number(),
-});
-export const RecipeSchema = RecipeLiteSchema.extend({
   nutrition: zc.object({
     calories: zc.number(),
     proteins: zc.number(),
     carbs: zc.number(),
     fats: zc.number(),
   }),
+  difficulty: zc.number().min(1).max(4),
   notes: zc.array(zc.string()),
   timePerAdditionalPortion: zc.number(),
+})
+
+export const RecipeSchema = RecipeContentSchema.extend({
+  id: zc.string().uuid(),
+  tags: zc.array(zc.string()),
+  imageUrl: zc.string().url().nullable(),
+  createdAt: zc.string().date(),
+  creatorId: zc.string().uuid(),
+  comments: CommentSchema.array().optional(),
+  likesCount: zc.number().default(0),
 });
 
 export const NewRecipeSchema = RecipeSchema.omit({
-  id: true
+  id: true,
+  likesCount: true,
+  createdAt: true,
+  creatorId: true,
+  comments: true,
+  imageUrl: true
 });
 
 export const GenerateRecipeSchemaRequest = zc.object({
@@ -69,8 +82,8 @@ export const GetRecipesSchemaRequest = zc.object({
 })
 
 export type Ingredient = z.infer<typeof IngredientSchema>;
-export type RecipeLite = z.infer<typeof RecipeLiteSchema>;
 export type Recipe = z.infer<typeof RecipeSchema>;
+export type RecipeContent = z.infer<typeof RecipeContentSchema>;
 export type NewRecipe = z.infer<typeof NewRecipeSchema>;
 export type RecipeRequest = z.infer<typeof RecipeSchemaRequest>
 export type RecipePlannerRequest = z.infer<typeof RecipePlannerSchemaRequest>

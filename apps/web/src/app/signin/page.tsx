@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
-import { createClient } from "@cook/supabase";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { trpcClient } from "@cook/trpc-client/client";
 
 type FormData = {
   email: string;
@@ -24,19 +24,21 @@ export default function SignIn() {
   const router = useRouter();
   const [authError, setAuthError] = useState<string | null>(null);
 
+  const signIn = trpcClient.users.signIn.useMutation({
+    onSuccess: () => {
+      setAuthError(null);
+      router.push("/dashboard"); 
+    },
+    onError: (error) => {
+      setAuthError(error.message);
+    },
+  });
+
   const onSubmit = async (data: FormData) => {
-    const supabase = createClient();
-    const { data: sessionData, error } = await supabase.auth.signInWithPassword({
+    await signIn.mutate({
       email: data.email,
       password: data.password,
     });
-
-    if (error) {
-      setAuthError(error.message);
-    } else {
-      setAuthError(null);
-      router.push("/dashboard"); // Redirect to the dashboard after successful login
-    }
   };
 
   return (

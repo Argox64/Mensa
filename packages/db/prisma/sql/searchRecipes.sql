@@ -6,8 +6,7 @@ SELECT *,
   similarity(name, $1) AS fuzzy
 FROM "Recipe"
 WHERE 
-  to_tsvector('french', name) @@ plainto_tsquery('french', $1)
-  OR name % $1
+   ($1 = '' OR to_tsvector('french', name) @@ plainto_tsquery('french', $1) OR name % $1)
 ORDER BY rank DESC, fuzzy DESC -- On peut imaginer ici un tri par pondération plutot => 
 --(ts_rank(to_tsvector('french', name), plainto_tsquery('french', $1)) * 0.7 + similarity(name, $1) * 0.3) AS score
 OFFSET $2

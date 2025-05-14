@@ -6,9 +6,8 @@ import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { PlannerEntry, Recipe, RecipeLite } from "@cook/validations"
+import { PlannerEntry } from "@cook/validations"
 
 
 interface MonthViewProps {

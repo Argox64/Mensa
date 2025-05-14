@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
-import { Ingredient, IngredientSchema, PlannerEntry, RecipeLite } from "@cook/validations"
+import { Ingredient, IngredientSchema, PlannerEntry } from "@cook/validations"
 import EditableSelect from "./ui/select-custom-input"
 import { Label } from "@radix-ui/react-dropdown-menu"
 
@@ -113,6 +113,7 @@ export function RecipeDialog({ open, onOpenChange, entry: entry, onSave, date }:
         preparationTime: 0,
         cookingTime: 0,
         tags : [],
+        createdAt: new Date(),
       },
       mealType: values.mealType,
       nbPortions: 1,

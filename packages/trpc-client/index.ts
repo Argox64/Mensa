@@ -5,11 +5,17 @@ export const trpc = (token: string) => createTRPCProxyClient<AppRouter>({
     links: [
         httpBatchLink({
           url: process.env.NEXT_PUBLIC_API_URL!,
-          async headers() {
+          fetch(url, options) {
+            return fetch(url, {
+              ...options,
+              credentials: 'include',
+            })
+          },
+          /*async headers() {
             return {
               authorization: token ? `Bearer ${token}` : '',
             };
-          },
+          },*/
         }),
       ],
   })
