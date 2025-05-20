@@ -1,28 +1,48 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Helmet } from "@/components/community/helmet"
 import { RecipeFilters } from "@/components/community/recipe-filters"
 import { RecipeGrid } from "@/components/community/recipe-grid"
-import { RecipeDetails } from "@/components/community/recipe-details"
 import { Recipe } from "@cook/validations"
 import { trpcClient } from "@cook/trpc-client/client"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function CommunityPage() {
+
+    const router = useRouter()
+    const searchParams = useSearchParams()
+
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
     const [selectedTime, setSelectedTime] = useState<string | null>(null)
     const [selectedTag, setSelectedTag] = useState<string | null>(null)
     const [sortBy, setSortBy] = useState<string>("popular")
-    const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
-    const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+    const params = new URLSearchParams()
+
+    // Mettre à jour l'URL lorsque les filtres changent
+    useEffect(() => {
+        const params = new URLSearchParams()
+
+        if (searchQuery) params.set("q", searchQuery)
+        if (selectedCategory) params.set("category", selectedCategory)
+        if (selectedDifficulty) params.set("difficulty", selectedDifficulty)
+        if (selectedTime) params.set("time", selectedTime)
+        if (selectedTag) params.set("tag", selectedTag)
+        if (sortBy !== "popular") params.set("sort", sortBy)
+
+        const url = `/recipes${params.toString() ? `?${params.toString()}` : ""}`
+
+        // Utiliser replaceState pour ne pas ajouter d'entrées inutiles dans l'historique
+        window.history.replaceState(null, "", url)
+    }, [searchQuery, selectedCategory, selectedDifficulty, selectedTime, selectedTag, sortBy])
 
 
     const getRecipes = trpcClient.recipes.getRecipes.useQuery(
-        { 
-            searchTerm: searchQuery, 
-            offset: 0, limit: 100 
+        {
+            searchTerm: searchQuery,
+            offset: 0, limit: 100
         },
         {
             enabled: true,
@@ -42,54 +62,48 @@ export default function CommunityPage() {
         ) {
             return false
         }
-
-        // Filtre par catégorie
-        /*if (selectedCategory && recipe.category !== selectedCategory) {
-          return false
-        }*/
-
-        // Filtre par difficulté
-        /*if (selectedDifficulty && recipe.difficulty !== selectedDifficulty) {
-          return false
-        }*/
-
-        // Filtre par temps de préparation
-        if (selectedTime) {
-            const prepTimeMinutes = recipe.preparationTime + recipe.cookingTime;
-            if (selectedTime === "quick" && prepTimeMinutes > 20) return false
-            if (selectedTime === "medium" && (prepTimeMinutes <= 20 || prepTimeMinutes > 45)) return false
-            if (selectedTime === "long" && prepTimeMinutes <= 45) return false
-        }
-
-        // Filtre par tag
-        if (selectedTag && !recipe.tags?.includes(selectedTag)) {
-            return false
-        }
-
         return true
     })
 
-    // Trier les recettes
-    const sortedRecipes = getRecipes.data?.sort((a, b) => {
-        //if (sortBy === "popular") return b.likes - a.likes
-        //if (sortBy === "recent") return new Date(b.date).getTime() - new Date(a.date).getTime()
-        //if (sortBy === "quickest") return Number.parseInt(a.prepTime) - Number.parseInt(b.prepTime)
-        return 0
-    })
+    // Gestionnaires de mise à jour des filtres
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value)
+    }
+
+    const handleCategoryChange = (value: string | null) => {
+        setSelectedCategory(value)
+    }
+
+    const handleDifficultyChange = (value: string | null) => {
+        setSelectedDifficulty(value)
+    }
+
+    const handleTimeChange = (value: string | null) => {
+        setSelectedTime(value)
+    }
+
+    const handleTagChange = (value: string | null) => {
+        setSelectedTag(value)
+    }
+
+    const handleSortChange = (value: string) => {
+        setSortBy(value)
+    }
+
+    const handleResetFilters = () => {
+        setSearchQuery("")
+        setSelectedCategory(null)
+        setSelectedDifficulty(null)
+        setSelectedTime(null)
+        setSelectedTag(null)
+        setSortBy("popular")
+    }
 
     const handleRecipeClick = (recipe: Recipe) => {
-        setSelectedRecipe(recipe)
-        setIsDetailsOpen(true)
-    }
-
-    const handleCloseDetails = () => {
-        setIsDetailsOpen(false)
-    }
-
-    const handleAddToPlanning = (recipe: Recipe) => {
-        // Ici, vous pourriez implémenter la logique pour ajouter la recette au planning
-        console.log("Recette ajoutée au planning:", recipe.title)
-        setIsDetailsOpen(false)
+        // Conserver les paramètres de recherche actuels dans l'URL de la recette
+        const currentParams = new URLSearchParams(window.location.search)
+        const recipeUrl = `/recipes/${recipe.id}${currentParams.toString() ? `?${currentParams.toString()}` : ""}`
+        router.push(recipeUrl)
     }
 
     return (
@@ -106,31 +120,23 @@ export default function CommunityPage() {
 
             <RecipeFilters
                 searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
+                onSearchChange={handleSearchChange}
                 selectedCategory={selectedCategory}
-                onCategoryChange={setSelectedCategory}
+                onCategoryChange={handleCategoryChange}
                 selectedDifficulty={selectedDifficulty}
-                onDifficultyChange={setSelectedDifficulty}
+                onDifficultyChange={handleDifficultyChange}
                 selectedTime={selectedTime}
-                onTimeChange={setSelectedTime}
+                onTimeChange={handleTimeChange}
                 selectedTag={selectedTag}
-                onTagChange={setSelectedTag}
+                onTagChange={handleTagChange}
                 sortBy={sortBy}
-                onSortChange={setSortBy}
+                onSortChange={handleSortChange}
+                onResetFilters={handleResetFilters}
             />
 
             <div className="mt-8">
-                <RecipeGrid recipes={sortedRecipes || []} onRecipeClick={handleRecipeClick} />
+                <RecipeGrid recipes={filteredRecipes ?? []} onRecipeClick={handleRecipeClick} />
             </div>
-
-            {selectedRecipe && (
-                <RecipeDetails
-                    recipe={selectedRecipe}
-                    isOpen={isDetailsOpen}
-                    onClose={handleCloseDetails}
-                    onAddToPlanning={handleAddToPlanning}
-                />
-            )}
         </div>
     )
 }

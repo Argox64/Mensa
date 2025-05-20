@@ -197,13 +197,6 @@ export function DailyRecipePlanner() {
             onEdit={(recipe) => handleEditRecipe(recipe)}
             onDelete={(recipeId) => handleDeleteRecipe(recipeId)}
           />
-
-          <div className="flex justify-center mt-6">
-            <Button onClick={() => handleAddRecipe()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Ajouter une recette
-            </Button>
-          </div>
         </TabsContent>
 
         <TabsContent value="week" className="mt-0">

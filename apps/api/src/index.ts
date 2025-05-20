@@ -7,7 +7,7 @@ import cookieParser from "cookie-parser";
 import { trpcExpress } from "@cook/trpc-server";
 import Stripe from "stripe";
 import { prisma } from "@cook/db";
-import { add, endOfDay } from "date-fns";
+import { endOfDay } from "date-fns";
 
 const app = express();
 app.use(cors({
@@ -57,15 +57,14 @@ const handleStripeWebhook = async (req: express.Request, res: express.Response) 
           const invoice = event.data.object;
           // Handle the payment confirmation
           console.log(`PaymentIntent for ${invoice.amount_paid} was successful!`);
-          const endDate = endOfDay(new Date(invoice.period_end * 1000));
           const subscription = await stripe.subscriptions.retrieve(invoice.parent?.subscription_details?.subscription as string);
+          const endDate = endOfDay(new Date(subscription.items.data[0]?.current_period_end as number * 1000));
 
           const t = await prisma.subscriptions.update({
             where: { id: subscription.metadata?.subscriptionId as string },
             data: {
-              status: "ACTIVE",
-              nextBillingDate: endDate,
-              endDate: endDate
+              stripeSubscriptionId: subscription.id,
+
             },
           });//TODO déplacer la logique métier dans un package à part du router de même pour trpc
           break;

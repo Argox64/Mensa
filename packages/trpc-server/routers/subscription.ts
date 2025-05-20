@@ -1,17 +1,18 @@
-import { privateProcedure, router } from "../trpc";
+import { privateProcedure, publicProcedure, router } from "../trpc";
 import { SubscriptionSchema } from "@cook/validations/src/subscription";
-import { UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError } from "@cook/errors";
-import { User, UserLite } from "@cook/validations";
+import { CONFLICT_ERROR, ConflictError, NOT_FOUND_RESOURCE_ERROR, NotFoundError, UnauthorizedError } from "@cook/errors";
+import { UserLite } from "@cook/validations";
 import Stripe from "stripe";
-import { ITRPCContext } from "../context";
 import { startOfDay } from "date-fns";
+import { getProfile } from "../services/user";
+import { ITRPCContext } from "../context";
 
 const stripe: Stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "stripe-secret-key", {
     apiVersion: '2025-04-30.basil',
 });
 
 export const subscriptionRouter = router({
-    getSubscriptions: privateProcedure
+    getSubscriptions: privateProcedure // TODO REMOVE
         .query(async ({ ctx }) => {
             const user = ctx.user as UserLite;
 
@@ -25,29 +26,61 @@ export const subscriptionRouter = router({
                 userId: subscription.userId,
                 planId: subscription.planId,
                 startDate: subscription.startDate,
-                endDate: subscription.endDate,
-                status: subscription.status,
-                nextBillingDate: subscription.nextBillingDate,
-                canceledAt: subscription.canceledAt,
                 Plan: subscription.Plan,
             }));
         }),
-
-    getActiveSubscription: privateProcedure
+    getLastSubscription: privateProcedure
         .query(async ({ ctx }) => {
             const user = ctx.user as UserLite;
 
             const subscription = await ctx.prisma.subscriptions.findFirst({
-                where: { userId: user.id, status: "ACTIVE" },
+                where: { userId: user.id },
                 include: { Plan: true },
+                orderBy: { startDate: "desc" },
             });
 
-            return subscription;
+            const sub = await stripe.subscriptions.retrieve(subscription?.stripeSubscriptionId as string);
+
+            return {
+                id: subscription?.id,
+                planId: subscription?.planId,
+                startDate: subscription?.startDate,
+                billingCycle: subscription?.billingCycle,
+                Plan: subscription?.Plan,
+                stripeSubscriptionId: sub.id,
+                status: sub.status,
+                current_period_end: sub.items.data[0]?.current_period_end as number * 1000,
+                current_period_start: sub.items.data[0]?.current_period_start as number * 1000,
+                cancel_at_period_end: sub.cancel_at_period_end,
+            };
+        }),
+    cancelActiveSubscription: privateProcedure
+        .mutation(async ({ ctx }) => {
+            const user = await getProfile({ ctx });
+
+            const subscription = await ctx.prisma.subscriptions.findFirst({
+                where: { userId: user.id },
+            });
+            if (!subscription) return null;
+
+            const subscriptions = await stripe.subscriptions.list({
+                customer: user.stripeCustomerId as string,
+                status: 'active',
+                limit: 1,
+            });
+
+            if (!subscriptions.data[0]) return null;
+
+            await stripe.subscriptions.update(subscriptions.data[0].id, {
+                cancel_at_period_end: true,
+            });
+
+            return { message: "Subscription canceled successfully" };
         }),
     createSubscription: privateProcedure
         .input(SubscriptionSchema.pick({ planId: true, billingCycle: true }))
         .mutation(async ({ input, ctx }) => {
-            const user = ctx.user as UserLite;
+            const user = await getProfile({ ctx })
 
             let price: string;
             //TODO add field in database
@@ -57,12 +90,33 @@ export const subscriptionRouter = router({
             else
                 price = "price_1ROEiTAcuZSbG8QXSCOtAmw7"; // YEARLY
 
+            let customer: Stripe.Customer;
+            if (!user.stripeCustomerId) {
+                customer = await stripe.customers.create({
+                    email: user.email,
+                    name: user.username,
+                    metadata: {
+                        userId: user.id,
+                    }
+                });
+                await ctx.prisma.user.update({
+                    where: { id: user.id },
+                    data: { stripeCustomerId: customer.id },
+                });
+            }
+            else
+                customer = await stripe.customers.retrieve(user.stripeCustomerId) as Stripe.Customer;
+
+            const activeSubscription = await getActiveSubscription(ctx);
+
+            if (activeSubscription) // For now, we only allow one active subscription
+                throw new ConflictError(CONFLICT_ERROR, {});
+
             const newSubscription = await ctx.prisma.subscriptions.create({
                 data: {
                     ...input,
                     userId: user.id,
                     startDate: startOfDay(new Date()),
-                    status: "PENDING"
                 },
             });
 
@@ -76,15 +130,15 @@ export const subscriptionRouter = router({
                     },
                 ],
                 client_reference_id: user.id,
-                customer_email: user.email,
-                success_url: `${ctx.req.headers.origin}/subscriptions/confirmation`,
+                customer: customer.id,
+                success_url: `${ctx.req.headers.origin}/subscriptions/confirmation?session_id={CHECKOUT_SESSION_ID}`,
                 cancel_url: `${ctx.req.headers.origin}/subscriptions?canceled=true`,
                 subscription_data: {
                     metadata: {
-                      userId: user.id,
-                      subscriptionId: newSubscription.id,
+                        userId: user.id,
+                        subscriptionId: newSubscription.id,
                     },
-                  },
+                },
             });
 
             return { ...newSubscription, url: checkoutSession.url };
@@ -93,13 +147,12 @@ export const subscriptionRouter = router({
         .input(SubscriptionSchema.pick({ id: true }))
         .mutation(async ({ input, ctx }) => {
             let user = ctx.user as UserLite;
-            //if (!user) throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
 
             const subscription = await ctx.prisma.subscriptions.findFirst({
                 where: { id: input.id, userId: user.id },
             });
 
-            if (!subscription) throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
+            if (!subscription) return new NotFoundError(NOT_FOUND_RESOURCE_ERROR, {});
 
             await ctx.prisma.subscriptions.delete({
                 where: { id: input.id },
@@ -109,52 +162,18 @@ export const subscriptionRouter = router({
         }),
 });
 
+async function getActiveSubscription(ctx: ITRPCContext) {
+    const user = await getProfile({ ctx });
 
-async function createStripePaymentIntent(
-    customer: Stripe.Customer,
-    user: User,
-    amount: number,
-    currency: string = 'usd',
-    ctx: ITRPCContext
-): Promise<Stripe.PaymentIntent> {
-    const paymentIntent = await stripe.paymentIntents.create({
-        amount,
-        currency,
-        customer: customer.id,
-        description: `Payment for ${user?.email}`,
-        shipping: {
-            name: `${user?.username}`,
-            address: {
-                line1: "23 Addess Fictive"
-            }
-        }, //TODO add address infos 
-    });
-
-    await ctx.prisma.payments.create({
-        data: {
-            userId: user.id,
-            subscriptionId: null,
-            amount: amount,
-            currency: currency,
-            status: "PENDING",
-            paymentMethod: "CREDIT_CARD",
-            paymentMethodDetails: JSON.stringify(paymentIntent.payment_method),
-            invoiceNumber: paymentIntent.id,
-        }
-    });
-
-    return paymentIntent;
-}
-
-async function updateStripeCustomer(
-    customerId: string,
-    updates: Stripe.CustomerUpdateParams
-): Promise<Stripe.Customer> {
-    try {
-        const customer = await stripe.customers.update(customerId, updates);
-        return customer;
-    } catch (error) {
-        console.error('Error updating Stripe customer:', error);
-        throw error;
+    if (!user?.stripeCustomerId) {
+        return null;
     }
+
+    const subscriptions = await stripe.subscriptions.list({
+        customer: user.stripeCustomerId,
+        status: "active",
+        limit: 10, // au cas où il y en aurait plusieurs
+    });
+
+    return subscriptions.data[0] ?? null;
 }

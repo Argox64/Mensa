@@ -79,9 +79,6 @@ export function MonthView({ days, entries: recipes, currentDate, onAddRecipe, on
                       >
                         {format(day, "d")}
                       </span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onAddRecipe(day)}>
-                        <Plus className="h-3 w-3" />
-                      </Button>
                     </div>
 
                     {dayRecipes.length > 0 && (
@@ -127,10 +124,6 @@ export function MonthView({ days, entries: recipes, currentDate, onAddRecipe, on
                                   />
                                 ))}
                               </div>
-                              <Button className="w-full mt-2" size="sm" onClick={() => onAddRecipe(day)}>
-                                <Plus className="mr-1 h-3 w-3" />
-                                Ajouter une recette
-                              </Button>
                             </PopoverContent>
                           </Popover>
                         )}

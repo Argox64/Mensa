@@ -79,20 +79,12 @@ export function WeekView({ days, entries: recipes, onAddRecipe, onEditRecipe, on
                                 />
                               ))}
                             </div>
-                            <Button className="w-full mt-2" size="sm" onClick={() => onAddRecipe(day)}>
-                              <Plus className="mr-1 h-3 w-3" />
-                              Ajouter une recette
-                            </Button>
                           </PopoverContent>
                         </Popover>
                       )}
                     </div>
                   )}
                 </ScrollArea>
-                <Button variant="ghost" size="sm" className="w-full mt-2" onClick={() => onAddRecipe(day)}>
-                  <Plus className="h-3 w-3 mr-1" />
-                  Ajouter
-                </Button>
               </CardContent>
             </Card>
           )

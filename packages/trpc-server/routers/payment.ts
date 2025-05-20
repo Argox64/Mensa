@@ -1,8 +1,8 @@
-import { privateProcedure, router } from "../trpc";
-import { PaymentSchema } from "@cook/validations/src/payment";
-import { UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError } from "@cook/errors";
+import { privateProcedure, publicProcedure, router } from "../trpc";
 import { UserLite } from "@cook/validations";
+import { z } from "@cook/validations/src/customs";
 import Stripe from "stripe";
+import { getProfile } from "../services/user";
 
 const stripe: Stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "stripe-scret-key", {
     apiVersion: '2025-04-30.basil',
@@ -11,86 +11,48 @@ const stripe: Stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "stripe-scret
 export const paymentRouter = router({
     getPayments: privateProcedure
         .query(async ({ input, ctx }) => {
-            const user = ctx.user as UserLite;
-
-            const payments = await ctx.prisma.payments.findMany({
-                where: { userId: user.id },
-            });
-
-            return payments.map((payment) => ({
-                id: payment.id,
-                userId: payment.userId,
-                subscriptionId: payment.subscriptionId,
-                amount: payment.amount,
-                currency: payment.currency,
-                status: payment.status,
-                paymentMethod: payment.paymentMethod,
-                paymentMethodDetails: payment.paymentMethodDetails?.toString() || null,
-                invoiceNumber: payment.invoiceNumber,
-                createdAt: payment.createdAt,
-                updatedAt: payment.updatedAt,
-            }));
+            const u = await getProfile({ ctx });
+            if(!u.stripeCustomerId) 
+                return null;
+            return await getInvoicesByCustomerId(u.stripeCustomerId);
         }),
-    /*createPayment: privateProcedure
-        .input(PaymentSchema.omit({ id: true, createdAt: true, updatedAt: true }))
-        .mutation(async ({ input, ctx }) => {
-            const user = ctx.user as UserLite;
-
-            const profile = await getProfile({ ctx });
-
-            const customer = await getOrCreateStripeCustomer(
-                profile.email,
-                profile.username);
-
-            const stripePaymentIntent = await createStripePaymentIntent(
-                customer,
-                profile,
-                input.amount,
-                "eur",
-                ctx
-            );
-
-            const newPayment = await ctx.prisma.payments.create({
-                data: {
-                    ...input,
-                    userId: user.id,
-                },
+    getSession: publicProcedure
+        .input(z.object({ sessionId: z.string() }))
+        .query(async ({ input, ctx }) => {
+            const session = await stripe.checkout.sessions.retrieve(input.sessionId, {
+                expand: ['payment_intent'],
             });
-
-            return newPayment;
-        }),*/
-    deletePayment: privateProcedure
-        .input(PaymentSchema.pick({ id: true }))
-        .mutation(async ({ input, ctx }) => {
-            const user = ctx.user as UserLite;
-
-            const payment = await ctx.prisma.payments.findFirst({
-                where: { id: input.id, userId: user.id },
-            });
-
-            if (!payment) throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
-
-            await ctx.prisma.payments.delete({
-                where: { id: input.id },
-            });
-
-            return { message: "Payment deleted successfully" };
-        }),
+            return session;
+        })
 });
 
 
-async function getOrCreateStripeCustomer(
-    email: string,
-    fullName: string
-): Promise<Stripe.Customer> {
-    const customers = await stripe.customers.list({ email });
-    if (customers.data.length > 0) {
-        return customers.data[0] as Stripe.Customer;
-    } else {
-        const customer = await stripe.customers.create({ email: email, name: fullName });
-        if (!customer)
-            throw new Error("Stripe user creation failed.");
-        return customer;
+async function getInvoicesByEmail(email: string) {
+    const customers = await getCustomersByEmail(email);
+    let allInvoices: Stripe.Invoice[] = [];
+
+    for (const customer of customers) {
+        const invoices = await stripe.invoices.list({
+            customer: customer.id,
+            limit: 100
+        });
+        allInvoices = allInvoices.concat(invoices.data);
     }
+
+    return allInvoices;
 }
 
+async function getInvoicesByCustomerId(customerId: string) {
+    return (await stripe.invoices.list({
+        customer: customerId,
+        limit: 100
+    })).data
+}
+
+async function getCustomersByEmail(email: string) {
+    const customers = await stripe.customers.list({
+        email: email,
+        limit: 100, // Ajustez la limite selon vos besoins
+    });
+    return customers.data;
+}

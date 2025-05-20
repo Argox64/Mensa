@@ -16,7 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { format, addMonths, addYears } from "date-fns"
+import { format, getTime, add } from "date-fns"
 import { fr } from "date-fns/locale"
 import { trpcClient } from "@cook/trpc-client/client"
 
@@ -24,14 +24,25 @@ export function SubscriptionManagement() {
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [cancellationReason, setCancellationReason] = useState("")
   const [isCancelling, setIsCancelling] = useState(false)
-  const [isCancelled, setIsCancelled] = useState(false);
 
-  const {data: subscription } = trpcClient.subscriptions.getActiveSubscription.useQuery(undefined, {
+  const { data: subscription, isLoading } = trpcClient.subscriptions.getLastSubscription.useQuery(undefined, {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
 
-  if (!subscription) {
+  console.log("Subscription data:", subscription)
+  const isCancelled = subscription?.cancel_at_period_end === true;
+
+  const cancelSubscription = trpcClient.subscriptions.cancelActiveSubscription.useMutation({
+    onSuccess: () => {
+      console.log("Subscription cancelled")
+    },
+    onError: (error) => {
+      console.error("Error cancelling subscription:", error)
+    },
+  })
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-lg font-medium">Chargement du profil...</div>
@@ -39,10 +50,19 @@ export function SubscriptionManagement() {
     )
   }
 
-  const nextBillingDate =
-    subscription.billingCycle === "MONTHLY"
-      ? addMonths(new Date(subscription.startDate), 1)
-      : addYears(new Date(subscription.startDate), 1)
+  if (!subscription) {
+
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-lg font-medium">Aucun abonnement actif trouvé.</div>
+      </div>
+    );
+  }
+
+  const nextBillingDate = new Date(subscription.current_period_end)
+
+  const startDate = getTime(add(nextBillingDate, subscription.billingCycle === "MONTHLY" ? { months: -1 } : { years: -1 }))
+  const progress = Math.max(1, (getTime(new Date()) - getTime(nextBillingDate)) / (getTime(nextBillingDate) - startDate))
 
   const handleCancelSubscription = async () => {
     setIsCancelling(true)
@@ -53,7 +73,9 @@ export function SubscriptionManagement() {
     console.log("Abonnement annulé, raison:", cancellationReason)
 
     setIsCancelling(false)
-    setIsCancelled(true)
+    setShowCancelDialog(false)
+
+    cancelSubscription.mutate();
 
     // Fermer la boîte de dialogue après 1 seconde
     setTimeout(() => {
@@ -74,106 +96,82 @@ export function SubscriptionManagement() {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Statut de l'abonnement */}
-        <div className="bg-muted p-4 rounded-lg">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-medium">Statut de l'abonnement</h3>
-            <Badge variant={isCancelled ? "destructive" : "default"}>{isCancelled ? "Annulé" : "Actif"}</Badge>
+        {!subscription ?
+          (<><div className="bg-muted p-4 rounded-lg">
+            <p className="text-sm text-muted-foreground mb-4">
+              Vous avez un plan gratuit
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            {isCancelled
-              ? "Votre abonnement a été annulé et prendra fin à la fin de la période de facturation en cours."
-              : `Votre abonnement ${subscription.Plan?.name} est actif et se renouvellera automatiquement.`}
-          </p>
-
-          {!isCancelled && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Période en cours</span>
-                <span>
-                  {format(new Date(subscription.startDate), "d MMMM yyyy", { locale: fr })} -{" "}
-                  {format(nextBillingDate, "d MMMM yyyy", { locale: fr })}
-                </span>
-              </div>
-              <Progress value={75} className="h-2" />
-              <div className="flex justify-between text-sm">
-                <span>Prochain renouvellement</span>
-                <span className="font-medium">{format(nextBillingDate, "d MMMM yyyy", { locale: fr })}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Détails de l'abonnement */}
-        <div>
-          <h3 className="font-medium mb-4">Détails de l'abonnement</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Plan</span>
-              <span className="font-medium">{subscription.Plan?.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Prix</span>
-              <span>
-                {subscription.billingCycle === "MONTHLY"
-                  ? `${subscription.Plan?.price}€ / mois`
-                  : `${subscription.Plan?.price}€ / an`}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Date de début</span>
-              <span>{format(new Date(subscription.startDate), "d MMMM yyyy", { locale: fr })}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Cycle de facturation</span>
-              <span>{subscription.billingCycle === "MONTHLY" ? "Mensuel" : "Annuel"}</span>
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Méthode de paiement */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-medium">Méthode de paiement</h3>
-            <Button variant="ghost" size="sm">
-              <Edit className="h-4 w-4 mr-2" />
-              Modifier
-            </Button>
-          </div>
-          <div className="flex items-center p-3 border rounded-lg">
-            <div className="mr-4 bg-muted p-2 rounded">
-              <CreditCard className="h-6 w-6" />
-            </div>
             <div>
-              <div className="font-medium">Visa se terminant par 1234</div>
-              <div className="text-sm text-muted-foreground">Expire le 12/25</div>
-            </div>
-          </div>
-        </div>
+              <h3 className="font-medium mb-4">Détails de l'abonnement</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Plan</span>
+                  <span className="font-medium">Gratuit</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Prix</span>
+                  <span>
+                    0€/mois
+                  </span>
+                </div>
+              </div>
+            </div></>) : (<>
 
-        <Separator />
+              <div className="bg-muted p-4 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-medium">Statut de l'abonnement</h3>
+                  <Badge variant={isCancelled ? "destructive" : "default"}>{isCancelled ? "Annulé" : "Actif"}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {isCancelled
+                    ? "Votre abonnement a été annulé et prendra fin à la fin de la période de facturation en cours."
+                    : `Votre abonnement ${subscription.Plan?.name} est actif et se renouvellera automatiquement.`}
+                </p>
 
-        {/* Historique des factures */}
-        <div>
-          <h3 className="font-medium mb-4">Historique des factures</h3>
-          <div className="space-y-3">
-            {/*subscription.invoices.map((invoice) => (
-              <div key={invoice.id} className="flex justify-between items-center p-3 border rounded-lg">
-                <div>
-                  <div className="font-medium">Facture #{invoice.number}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {format(new Date(invoice.date), "d MMMM yyyy", { locale: fr })} • {invoice.amount}€
+                
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Période en cours</span>
+                      <span>
+                        {format(new Date(subscription.current_period_start), "d MMMM yyyy", { locale: fr })} -{" "}
+                        {format(nextBillingDate, "d MMMM yyyy", { locale: fr })}
+                      </span>
+                    </div>
+                    <Progress value={ progress } className="h-2" />
+                    <div className="flex justify-between text-sm">
+                      <span>{ isCancelled ? "Fin de l'abonnement" : "Prochain renouvellement"}</span>
+                      <span className="font-medium">{format(nextBillingDate, "d MMMM yyyy", { locale: fr })}</span>
+                    </div>
+                  </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium mb-4">Détails de l'abonnement</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Plan</span>
+                    <span className="font-medium">{subscription.Plan?.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Prix</span>
+                    <span>
+                      {subscription.billingCycle === "MONTHLY"
+                        ? `${subscription.Plan?.monthlyPrice as number / 100}€ / mois`
+                        : `${subscription.Plan?.yearlyPrice as number / 100}€ / an`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Date de début</span>
+                    <span>{format(new Date(subscription.current_period_start), "d MMMM yyyy", { locale: fr })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Cycle de facturation</span>
+                    <span>{subscription.billingCycle === "MONTHLY" ? "Mensuel" : "Annuel"}</span>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  PDF
-                </Button>
-              </div>
-            ))*/}
-          </div>
-        </div>
+              </div></>)}
+
 
         {!isCancelled && (
           <>

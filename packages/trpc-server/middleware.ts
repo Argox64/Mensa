@@ -1,13 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { t } from "./trpc";
-import { HttpError, INTERNAL_ERROR } from "@cook/errors";
-import { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
+import { UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError } from "@cook/errors";
 
 export const isAuthed = () =>
   t.middleware(async ({ ctx, next }) => {
     if (!ctx.user || ctx.user.role !== "authenticated") {
       console.log("UNAUTHORIZED");
-      throw new TRPCError({ code: "UNAUTHORIZED" });
+      throw new TRPCError({ code: "UNAUTHORIZED", cause: new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {})});
     }
 
     return next({
@@ -19,7 +18,7 @@ export const isAuthed = () =>
     });
   });
 
-export const errorHandler = () =>
+/*export const errorHandler = () =>
   t.middleware(async ({ ctx, next }) => {
     try {
       return await next({
@@ -34,23 +33,13 @@ export const errorHandler = () =>
         const errorCode = getErrorCode(err);
         throw new TRPCError({
           code: errorCode,
-          cause: [
-            {
-              id: errorCode,
-              message: error.message
-            },
-          ],
+          cause: e,
         })
       }
       else {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          cause: [
-            {
-              id: INTERNAL_ERROR.code,
-              message: error.message
-            }
-          ]
+          cause: new InternalError(INTERNAL_ERROR.code, error.message, {})
         })
       }
     }
@@ -75,4 +64,4 @@ function getErrorCode(error: HttpError): TRPC_ERROR_CODE_KEY {
     default:
       return "INTERNAL_SERVER_ERROR";
   }
-}
+}*/

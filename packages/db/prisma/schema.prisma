@@ -68,12 +68,9 @@ model Subscriptions {
   id              String   @id @default(uuid()) @db.Uuid
   userId          String   @db.Uuid
   planId          Int?
-  status          SubscriptionStatus
   billingCycle    BillingCycle
   startDate       DateTime
-  endDate         DateTime?
-  nextBillingDate DateTime?
-  canceledAt      DateTime?
+  stripeSubscriptionId String? @unique
 
   Plan            Plans?   @relation(fields: [planId], references: [id])
   Payments        Payments[]
@@ -81,7 +78,6 @@ model Subscriptions {
 
   @@index([userId])
   @@index([planId])
-  @@index([status])
 
   @@map("Subscriptions")
 }
@@ -140,6 +136,7 @@ model User {
   id                 String                @id @db.Uuid //use UUID of supabase
   username           String
   dietaryPreferences String[]
+  stripeCustomerId   String?
   notificationSettings NotificationSettings?
 
   // Relations

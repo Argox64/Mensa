@@ -52,5 +52,6 @@ export async function getProfile({ ctx }: { ctx: ITRPCContext }) {
       updatedAt: dateToyyyyMMddFormat(u.updatedAt),
       email: user.email,
       aud: user.aud,
+      stripeCustomerId: u.stripeCustomerId,
     }
 }

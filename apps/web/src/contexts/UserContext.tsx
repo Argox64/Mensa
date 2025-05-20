@@ -5,6 +5,8 @@ import { createClient } from "@cook/supabase";
 import { trpcClient } from "@cook/trpc-client/client";
 import { UserLite } from "@cook/validations";
 import { createContext, useContext, useState } from "react";
+import { TRPCClientError } from "@cook/trpc-client/types";
+import { UnauthorizedError } from "@cook/errors";
 
 interface UserContextType {
   user: UserLite | null;
@@ -22,7 +24,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     enabled: true,
     refetchOnWindowFocus: false,
     onSuccess: (user) => {
-      console.log("User fetched from server:", user);
       if (user) {
         setUser({
           id: user.id,
@@ -32,9 +33,15 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       }
     },
     onError: (error) => {
-      console.error("Error fetching user:", error);
       setUser(null);
     },
+    retry: (failureCount, error) => {
+      console.log("retrying", failureCount, error.shape?.data);
+      if (error instanceof TRPCClientError && error.shape.data.code === "UNAUTHORIZED") {
+        return false;
+      }
+      return failureCount < 2;
+    }
   });
 
   const signOut = async () => {

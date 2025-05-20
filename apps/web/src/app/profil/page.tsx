@@ -1,12 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { redirect } from 'next/navigation'
 import { ProfileHeader } from "@/components/profile/profile-header"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ProfileForm } from "@/components/profile/profile-form"
 import { SavedRecipes } from "@/components/profile/saved-recipes"
-import { UserStats } from "@/components/profile/user-stats"
 import { SubscriptionManagement } from "@/components/profile/subscription-management"
 import { PaymentHistory } from "@/components/profile/payment-history"
 import { User } from "@cook/validations"
@@ -15,10 +13,6 @@ import { trpcClient } from "@cook/trpc-client/client"
 
 export default function ProfilePage() {
   const { user } = useUser();
-  /*if(!user) {
-    redirect(`/signin`);
-  }*/
-    console.log(user)
 
   const [activeTab, setActiveTab] = useState("informations")
 

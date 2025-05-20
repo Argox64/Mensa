@@ -81,3 +81,8 @@ export const METHOD_NOT_ALLOWED_ERROR: ErrorType = {
   code: "E405-1",
   localKey: "errors.method-not-allowed",
 };
+
+export const CONFLICT_ERROR: ErrorType = {
+  code: "E409-1",
+  localKey: "errors.conflict",
+};

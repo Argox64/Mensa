@@ -1,6 +1,5 @@
 'use client'
 
-import { createClient } from '@cook/supabase'
 import { trpcClient as trpc } from './client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'

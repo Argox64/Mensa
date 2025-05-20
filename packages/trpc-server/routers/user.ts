@@ -4,6 +4,7 @@ import { SignInSchemaRequest, SignUpSchemaRequest, UserLite, UserSchema } from "
 import { TRPCError } from "@trpc/server";
 import { INTERNAL_ERROR, InternalError } from "@cook/errors";
 import { signIn, getProfile } from "../services/user";
+import { setCookies } from "../utils/cookies";
 
 export const userRouter = router({
   patchUser: privateProcedure
@@ -35,7 +36,7 @@ export const userRouter = router({
     .mutation(async ({ input, ctx }) => {
       const session = await signIn({input, ctx});
 
-      setCookie(ctx, session);
+      setCookies(ctx.res, session);
       return {
         session: session,
       };
@@ -61,7 +62,7 @@ export const userRouter = router({
         },
       });
 
-      setCookie(ctx, session);
+      setCookies(ctx.res, session);
 
       if (error)
         throw new TRPCError({
@@ -82,13 +83,3 @@ export const userRouter = router({
       return await getProfile({ctx});
     })
 });
-
-
-function setCookie(ctx: any, session: any) {
-  ctx.res.cookie('token', session.access_token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",       
-    sameSite: 'lax', 
-    maxAge: 3600 * 1000 * 24 * 15 // (facultatif) durée en ms (15 jours)
-  });
-}

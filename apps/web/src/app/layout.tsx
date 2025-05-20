@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import Navbar from "@/components/navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { UserProvider } from "@/contexts/UserContext";
+import { RoadmapButton } from "@/components/roadmap/roadmap-button";
 
 /*const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,6 +58,7 @@ export default function RootLayout({
             <div className="flex flex-col gap-4">
               {children}
             </div>
+            <RoadmapButton />
             <Toaster />
           </UserProvider>
         </TrpcProvider>

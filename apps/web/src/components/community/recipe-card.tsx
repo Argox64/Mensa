@@ -15,6 +15,7 @@ interface RecipeCardProps {
 export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
   const difficulty =
     difficultyColors[recipe.difficulty as keyof typeof difficultyColors] || "bg-gray-100 text-gray-800";
+    console.log("Difficulty:", recipe);
 
   return (
     <Card
@@ -31,9 +32,9 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
         <h3 className="font-bold text-lg line-clamp-2">{recipe.title}</h3>
         <div className="flex items-center mt-2 text-sm text-muted-foreground">
           <User className="h-3 w-3 mr-1" />
-          <span className="mr-3">{recipe.creatorId}</span>
+          <span className="mr-3">{recipe.Creator?.userName}</span>
           <Clock className="h-3 w-3 mr-1" />
-          <span>{recipe.preparationTime} min</span>
+          <span>{recipe.preparationTime + recipe.cookingTime} min</span>
         </div>
         <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{recipe.description}</p>
       </CardContent>
@@ -41,11 +42,11 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
         <div className="flex justify-between items-center w-full">
           <div className="flex items-center">
             <Clock className="h-4 w-4 text-muted-foreground mr-1" />
-            <span className="text-sm">{recipe.preparationTime} min</span>
+            <span className="text-sm">Tags ici ?</span>
           </div>
           <div className="flex items-center">
             <Heart className="h-4 w-4 text-red-500 mr-1" />
-            <span className="text-sm">{/*recipe.likes*/}</span>
+            <span className="text-sm">{recipe.likesCount}</span>
           </div>
         </div>
       </CardFooter>

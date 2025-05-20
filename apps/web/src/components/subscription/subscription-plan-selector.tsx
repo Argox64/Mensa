@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plan } from "@cook/validations"
+import { Label } from "../ui/label"
 
 interface SubscriptionPlanSelectorProps {
   plans: Plan[]
   billingCycle: "MONTHLY" | "YEARLY"
   onSelectPlan: (plan: Plan) => void
+  activePlan: number | null
 }
 
-export function SubscriptionPlanSelector({ plans, billingCycle, onSelectPlan }: SubscriptionPlanSelectorProps) {
+export function SubscriptionPlanSelector({ plans, billingCycle, onSelectPlan, activePlan }: SubscriptionPlanSelectorProps) {
   const getSavings = (monthlyPrice: number, yearlyPrice: number) => {
     return monthlyPrice * 12 - yearlyPrice;
   }
@@ -48,9 +50,9 @@ export function SubscriptionPlanSelector({ plans, billingCycle, onSelectPlan }: 
                       Économisez {savings}€
                     </Badge>
                   </div>
-                ): (
-                <div className="h-6">
-                </div>
+                ) : (
+                  <div className="h-6">
+                  </div>
                 )}
               </div>
 
@@ -63,19 +65,40 @@ export function SubscriptionPlanSelector({ plans, billingCycle, onSelectPlan }: 
                 ))}
               </ul>
             </CardContent>
-            <CardFooter>
-              <Button
-                className="w-full"
-                variant={/*plan.popular ? "default" :*/ "outline"}
-                onClick={() => onSelectPlan(plan)}
-              >
-                {/*plan.id === "free" ? "Plan actuel" : "Choisir ce plan"*/}
-                Choisir ce plan
-              </Button>
+            <CardFooter className="flex justify-center">
+              <GetPlanButton onSelectPlan={onSelectPlan} plan={plan} activePlan={activePlan} />
             </CardFooter>
           </Card>
         )
       })}
     </div>
   )
+}
+
+
+function GetPlanButton({ activePlan, plan, onSelectPlan }: { activePlan: number | null, plan: Plan, onSelectPlan: (plan: Plan) => void }) {
+  const isActivePlan = activePlan === plan.id;
+  const isFreeNotActivePlan = activePlan !== 1 && plan.id === 1;
+  if (isActivePlan) {
+    return <Button
+      className="w-full"
+      variant={"default"}
+      disabled
+    >
+      Plan actuel
+    </Button>
+  }
+  else if (isFreeNotActivePlan) {
+    return null;
+  }
+  else
+    return (
+      <Button
+        className="w-full"
+        variant={/*plan.popular ? "default" :*/ "outline"}
+        onClick={() => onSelectPlan(plan)}
+      >
+        Choisir ce plan
+      </Button>
+    )
 }

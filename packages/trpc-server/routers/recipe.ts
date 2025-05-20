@@ -1,4 +1,4 @@
-import { INTERNAL_ERROR, InternalError, UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError } from "@cook/errors";
+import { INTERNAL_ERROR, InternalError, NOT_FOUND_RESOURCE_ERROR, NotFoundError, UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError } from "@cook/errors";
 import { privateProcedure, router } from "../trpc";
 import { GetRecipesSchemaRequest, NewRecipe, Recipe, RecipeContent, RecipePlannerSchemaRequest, RecipeSchema, RecipeSchemaRequest, UserLite } from "@cook/validations";
 import { generateRecipesList, generateUniqueRecipe } from "../services/recipes";
@@ -30,11 +30,52 @@ export const recipeRouter = router({
           difficulty: recipeContent.difficulty,
           likesCount: recipe.likesCount,
           createdAt: dateToyyyyMMddFormat(recipe.createdAt),
+          Creator: recipe.user, //WARNING 
         };
       }) as Recipe[];
-      //await new Promise(r => setTimeout(r, 500))
       console.log("recipes", recs);
       return recs;
+    }),
+  getRecipe: privateProcedure
+    .input(RecipeSchema.pick({ id: true }))
+    .query(async ({ input, ctx }) => {
+      const user = ctx.user as UserLite;
+
+      const recipe = await ctx.prisma.recipe.findUnique({
+        where: { id: input.id },
+        include: {
+          Likes: {
+            where: {
+              userId: user.id,
+            },
+          },
+          Creator: true
+        },
+      });
+
+      if (!recipe) throw new NotFoundError(NOT_FOUND_RESOURCE_ERROR, {});
+
+      const recipeContent = recipe.content as RecipeContent;
+      return {
+        id: recipe.id,
+        title: recipe.name,
+        description: recipeContent.description,
+        tags: recipe.tags,
+        ingredients: recipeContent.ingredients,
+        steps: recipeContent.steps,
+        preparationTime: recipeContent.preparationTime,
+        cookingTime: recipeContent.cookingTime,
+        nutrition: recipeContent.nutrition,
+        notes: recipeContent.notes || [],
+        timePerAdditionalPortion: recipeContent.timePerAdditionalPortion || 0,
+        difficulty: recipeContent.difficulty,
+        likesCount: recipe.likesCount,
+        createdAt: dateToyyyyMMddFormat(recipe.createdAt),
+        Creator: {
+          id: recipe.creatorId,
+          userName: recipe.Creator.username,
+        },
+      } as Recipe;
     }),
   processRecipe: privateProcedure
     .input(RecipeSchemaRequest)

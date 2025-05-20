@@ -7,12 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { SubscriptionPlanSelector } from "@/components/subscription/subscription-plan-selector"
-import { PaymentForm } from "@/components/subscription/payment-form"
 import { Plan } from "@cook/validations"
 import { trpcClient } from "@cook/trpc-client/client"
 
 export default function SubscriptionsPage() {
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY")
+  const [activePlan, setActivePlan] = useState<number | null>(null)
   //const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [subscriptionPlans, setSubscriptionPlans] = useState<Plan[]>([])
 
@@ -41,6 +41,14 @@ export default function SubscriptionsPage() {
       billingCycle: billingCycle,
     });
   }
+
+  const getActivePlan = trpcClient.subscriptions.getLastSubscription.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    onSuccess: (data) => {
+      setActivePlan(data?.Plan?.id || null)
+    },
+  });
 
   return (
     <div className="container mx-auto py-10 px-4">
@@ -75,6 +83,7 @@ export default function SubscriptionsPage() {
                 plans={subscriptionPlans}
                 billingCycle="MONTHLY"
                 onSelectPlan={handlePlanSelect}
+                activePlan={activePlan}
               />
             </TabsContent>
 
@@ -83,6 +92,7 @@ export default function SubscriptionsPage() {
                 plans={subscriptionPlans}
                 billingCycle="YEARLY"
                 onSelectPlan={handlePlanSelect}
+                activePlan={activePlan}
               />
             </TabsContent>
           </Tabs>

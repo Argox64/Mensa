@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, SlidersHorizontal } from "lucide-react"
+import { Search, SlidersHorizontal, ArrowUpDown, Filter } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -47,6 +47,7 @@ export function RecipeFilters({
   onSortChange,
   selectedTag,
   onTagChange,
+  onResetFilters,
 }: RecipeFiltersProps) {
   const isMobile = useMediaQuery("(max-width: 768px)")
   const [tempFilters, setTempFilters] = useState({
@@ -72,10 +73,7 @@ export function RecipeFilters({
       time: null,
       tag: null,
     })
-    onCategoryChange(null)
-    onDifficultyChange(null)
-    onTimeChange(null)
-    onTagChange(null)
+    onResetFilters()
     setIsSheetOpen(false)
   }
 
@@ -118,20 +116,25 @@ export function RecipeFilters({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-grow">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Rechercher une recette ou un auteur..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      {/* Barre de recherche */}
+      <div className="relative w-full">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder="Rechercher une recette ou un auteur..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-10"
+        />
+      </div>
 
-        <div className="flex gap-2">
+      {/* Tri et filtrage */}
+      <div className="flex flex-wrap gap-4">
+        {/* Section de tri */}
+        <div className="flex items-center gap-2 bg-muted/30 px-3 py-1 rounded-md">
+          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium hidden md:inline">Trier par:</span>
           <Select value={sortBy} onValueChange={onSortChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] border-0 bg-transparent p-0 h-8 focus:ring-0">
               <SelectValue placeholder="Trier par" />
             </SelectTrigger>
             <SelectContent>
@@ -142,12 +145,22 @@ export function RecipeFilters({
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Séparateur vertical */}
+        <div className="hidden md:block w-px h-8 bg-border self-center"></div>
+
+        {/* Section de filtres */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter className="h-4 w-4 text-muted-foreground hidden md:block" />
+          <span className="text-sm font-medium hidden md:inline">Filtrer par:</span>
 
           {isMobile ? (
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
                   <SlidersHorizontal className="h-4 w-4" />
+                  <span>Filtres</span>
                 </Button>
               </SheetTrigger>
               <SheetContent>
@@ -313,7 +326,7 @@ export function RecipeFilters({
           </Button>
         )}
         {(selectedCategory || selectedDifficulty || selectedTime || selectedTag) && (
-          <Button variant="ghost" size="sm" onClick={handleResetFilters} className="h-7 text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={onResetFilters} className="h-7 text-xs text-muted-foreground">
             Effacer tous les filtres
           </Button>
         )}
