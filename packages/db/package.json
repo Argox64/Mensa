@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "db:setup": "node setup.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.7.0"
+    "@prisma/client": "^6.7.0",
+    "dotenv": "^16.5.0",
+    "pg": "^8.16.0"
   },
   "devDependencies": {
     "prisma": "^6.7.0"
