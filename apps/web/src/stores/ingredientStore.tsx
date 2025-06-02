@@ -2,7 +2,7 @@ import { PantryItem } from '@/types/Pantry';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-type PantryStoreState = {
+type PantryStoreState = { //todo REMOVE
     ingredients: PantryItem[];
     addIngredient: (item: PantryItem) => void;
     removeIngredient: (itemId: number) => void;

@@ -16,4 +16,9 @@ export const PaymentSchema = zc.object({
     Subscription: SubscriptionSchema,
 })
 
+export const GetPaymentsListSchema = zc.object({
+    gte: zc.number().int().default(0)
+});
+
 export type Payment = z.infer<typeof PaymentSchema>;
+export type PaymentList = z.infer<typeof GetPaymentsListSchema>;

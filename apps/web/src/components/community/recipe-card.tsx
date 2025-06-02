@@ -9,7 +9,7 @@ import { difficultyColors } from "@/lib/types"
 
 interface RecipeCardProps {
   recipe: Recipe
-  onClick: (recipe: Recipe) => void
+  onClick?: (recipe: Recipe) => void
 }
 
 export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
@@ -19,8 +19,8 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
 
   return (
     <Card
-      className="overflow-hidden transition-all duration-200 hover:shadow-md cursor-pointer h-full flex flex-col"
-      onClick={() => onClick(recipe)}
+      className={"overflow-hidden transition-all duration-200 h-full flex flex-col" + (onClick ? " hover:shadow-md cursor-pointer" : "")}
+      onClick={() => onClick?.(recipe)}
     >
       <div className="aspect-video relative">
         <img src={recipePlaceholderUrl} alt={recipe.title} className="object-cover w-full h-full" />

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import {
   Download,
   Search,
@@ -10,7 +10,7 @@ import {
   CheckCircle,
   XCircle
 } from "lucide-react"
-import { format } from "date-fns"
+import { addMonths, format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { trpcClient } from "@cook/trpc-client/client"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
@@ -22,12 +22,27 @@ import { Button } from "../ui/button"
 
 export function PaymentHistory() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string | null>(null)
-  const [dateFilter, setDateFilter] = useState<string | null>(null)
+  const [dateFilter, setDateFilter] = useState<"all" | "last_month" | "last_3_months" | "last_year">("all")
 
-  const { data: allInvoices = [], isLoading, isError } = trpcClient.payment.getPayments.useQuery(undefined, {
+  const gte = useMemo(() => {
+    let currentDate = new Date();
+    switch (dateFilter) {
+      case "last_month":
+        return addMonths(currentDate, -1).getTime() / 1000;
+      case "last_3_months":
+        return addMonths(currentDate, -3).getTime() / 1000;
+      case "last_year":
+        return addMonths(currentDate, -12).getTime() / 1000;
+      default:
+        return 0;
+    }
+  }, [dateFilter]);
+
+  const { data: allInvoices = [], isLoading, isError } = trpcClient.payment.getPayments.useQuery({
+    gte: Math.floor(gte),
+  }, {
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    refetchOnReconnect: false
   })
 
   if (isLoading) return <p>Chargement...</p>
@@ -57,26 +72,8 @@ export function PaymentHistory() {
             <div className="flex items-center gap-2 bg-muted/30 px-3 py-1 rounded-md">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select
-                value={statusFilter || "all"}
-                onValueChange={(value) => setStatusFilter(value === "all" ? null : value)}
-              >
-                <SelectTrigger className="w-[150px] border-0 bg-transparent p-0 h-8 focus:ring-0">
-                  <SelectValue placeholder="Statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="paid">Payé</SelectItem>
-                  <SelectItem value="failed">Échoué</SelectItem>
-                  <SelectItem value="refunded">Remboursé</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2 bg-muted/30 px-3 py-1 rounded-md">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select
                 value={dateFilter || "all"}
-                onValueChange={(value) => setDateFilter(value === "all" ? null : value)}
+                onValueChange={(value) => setDateFilter(value as typeof dateFilter)}
               >
                 <SelectTrigger className="w-[150px] border-0 bg-transparent p-0 h-8 focus:ring-0">
                   <SelectValue placeholder="Période" />

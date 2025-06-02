@@ -46,11 +46,15 @@ export abstract class HttpError extends Error {
  * 400 Bad Request
  */
 export class BadRequestError extends HttpError {
+  constructor(errorType: ErrorType);
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
 
   constructor(...params: any[]) {
-    if (params.length === 2) {
+    if (params.length === 1) {
+      super(params[0], 400, {});
+    }
+    else if (params.length === 2) {
       // first constructor
       super(params[0], 400, params[1]);
     } else {
@@ -65,11 +69,15 @@ export class BadRequestError extends HttpError {
  * 401 Unauthorized
  */
 export class UnauthorizedError extends HttpError {
+  constructor(errorType: ErrorType);
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(erorCode: string, m: string, slots: Record<string, string>);
 
   constructor(...params: any[]) {
-    if (params.length === 2) {
+    if (params.length === 1) {
+      super(params[0], 401, {});
+    }
+    else if (params.length === 2) {
       // first constructor
       super(params[0], 401, params[1]);
     } else {
@@ -84,11 +92,15 @@ export class UnauthorizedError extends HttpError {
  * 403 Forbidden
  */
 export class ForbiddenError extends HttpError {
+  constructor(errorType: ErrorType);
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
 
   constructor(...params: any[]) {
-    if (params.length === 2) {
+    if (params.length === 1) {
+      super(params[0], 403, {});
+    }
+    else if (params.length === 2) {
       // first constructor
       super(params[0], 403, params[1]);
     } else {
@@ -103,11 +115,15 @@ export class ForbiddenError extends HttpError {
  * 404 Not Found
  */
 export class NotFoundError extends HttpError {
+  constructor(errorType: ErrorType);
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
 
   constructor(...params: any[]) {
-    if (params.length === 2) {
+    if (params.length === 1) {
+      super(params[0], 404, {});
+    }
+    else if (params.length === 2) {
       // first constructor
       super(params[0], 404, params[1]);
     } else {
@@ -122,11 +138,15 @@ export class NotFoundError extends HttpError {
  * 405 Method Not Allowed
  */
 export class MethodNotAllowedError extends HttpError {
+  constructor(errorType: ErrorType);
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
 
   constructor(...params: any[]) {
-    if (params.length === 2) {
+    if (params.length === 1) {
+      super(params[0], 405, {});
+    }
+    else if (params.length === 2) {
       // first constructor
       super(params[0], 405, params[1]);
     } else {
@@ -141,11 +161,15 @@ export class MethodNotAllowedError extends HttpError {
  * 409 Conflict
  */
 export class ConflictError extends HttpError {
+  constructor(errorType: ErrorType);
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
 
   constructor(...params: any[]) {
-    if (params.length === 2) {
+    if (params.length === 1) {
+      super(params[0], 409, {});
+    }
+    else if (params.length === 2) {
       // first constructor
       super(params[0], 409, params[1]);
     } else {
@@ -160,11 +184,15 @@ export class ConflictError extends HttpError {
  * 422 Unprocessable Entity
  */
 export class UnprocessableEntityError extends HttpError {
+  constructor(errorType: ErrorType);
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
 
   constructor(...params: any[]) {
-    if (params.length === 2) {
+    if (params.length === 1) {
+      super(params[0], 422, {});
+    }
+    else if (params.length === 2) {
       // first constructor
       super(params[0], 422, params[1]);
     } else {
@@ -179,18 +207,22 @@ export class UnprocessableEntityError extends HttpError {
  * 500 Internal Server Error
  */
 export class InternalError extends HttpError {
+  constructor(errorType: ErrorType);
   constructor(errorType: ErrorType, slots: Record<string, string>);
   constructor(errorCode: string, m: string, slots: Record<string, string>);
 
   constructor(...params: any[]) {
-    if (params.length === 2) {
+    if (params.length === 1) {
+      super(params[0], 500, {});
+    }
+    else if (params.length === 2) {
       // first constructor
       super(params[0], 500, params[1]);
     } else {
       // second constructor
       super(params[0], params[1], 500, params[2]);
     }
-    this.name = "Not Found";
+    this.name = "Internal Server Error";
   }
 }
 

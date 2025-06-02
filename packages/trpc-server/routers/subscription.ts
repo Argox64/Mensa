@@ -1,6 +1,6 @@
-import { privateProcedure, publicProcedure, router } from "../trpc";
+import { privateProcedure, router } from "../trpc";
 import { SubscriptionSchema } from "@cook/validations/src/subscription";
-import { CONFLICT_ERROR, ConflictError, NOT_FOUND_RESOURCE_ERROR, NotFoundError, UnauthorizedError } from "@cook/errors";
+import { CONFLICT_ERROR, ConflictError, INTERNAL_ERROR, InternalError, NOT_FOUND_RESOURCE_ERROR, NotFoundError, UnauthorizedError } from "@cook/errors";
 import { UserLite } from "@cook/validations";
 import Stripe from "stripe";
 import { startOfDay } from "date-fns";
@@ -31,7 +31,7 @@ export const subscriptionRouter = router({
         }),
     getLastSubscription: privateProcedure
         .query(async ({ ctx }) => {
-            const user = ctx.user as UserLite;
+            const user = await getProfile({ ctx });
 
             const subscription = await ctx.prisma.subscriptions.findFirst({
                 where: { userId: user.id },
@@ -39,7 +39,32 @@ export const subscriptionRouter = router({
                 orderBy: { startDate: "desc" },
             });
 
-            const sub = await stripe.subscriptions.retrieve(subscription?.stripeSubscriptionId as string);
+            if (!subscription) return null;
+
+            let sub: Stripe.Subscription | null = null;
+            if (subscription.stripeSubscriptionId === null) { // If webhook has not been called
+                console.warn("Stripe subscription ID is null (Webhook has certainly an issue), fetching from Stripe API");
+                const subscriptions = await stripe.subscriptions.list({
+                    customer: user.stripeCustomerId as string,
+                    limit: 1,
+                    status: 'all',
+                    expand: ['data.default_payment_method'],
+                });
+
+                sub = subscriptions.data[0] ?? null;
+                ctx.prisma.subscriptions.update({
+                    where: { id: subscription.id },
+                    data: {
+                        stripeSubscriptionId: sub?.id || null,
+                    },
+                });
+
+            }
+            else {
+                sub = await stripe.subscriptions.retrieve(subscription?.stripeSubscriptionId as string);
+            }
+
+            if (!sub) throw new InternalError(INTERNAL_ERROR);
 
             return {
                 id: subscription?.id,

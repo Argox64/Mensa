@@ -5,7 +5,7 @@ import { SignUp, UserLite } from "@cook/validations";
 import { TRPCError } from "@trpc/server";
 import { dateToyyyyMMddFormat } from "../utils/date";
 
-export async function signIn({ input, ctx }: { input: SignUp, ctx: ITRPCContext }) {
+export async function signUp({ input, ctx }: { input: SignUp, ctx: ITRPCContext }) {
     const supabase = await createClient();
     const {
         data: { session, user },

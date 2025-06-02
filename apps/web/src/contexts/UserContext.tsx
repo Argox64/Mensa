@@ -1,30 +1,30 @@
-// context/UserContext.tsx
 "use client";
 
-import { createClient } from "@cook/supabase";
+//import { createClient } from "@cook/supabase";
 import { trpcClient } from "@cook/trpc-client/client";
 import { UserLite } from "@cook/validations";
 import { createContext, useContext, useState } from "react";
 import { TRPCClientError } from "@cook/trpc-client/types";
-import { UnauthorizedError } from "@cook/errors";
 
 interface UserContextType {
   user: UserLite | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<UserLite>;
+  refetchUser: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<UserLite | null>(null);
-  const supabase = createClient();
 
-  const { data, isLoading } = trpcClient.users.me.useQuery(undefined, {
+  const meRes = trpcClient.users.me.useQuery(undefined, {
     enabled: true,
     refetchOnWindowFocus: false,
     onSuccess: (user) => {
       if (user) {
+        console.log("User fetched successfully:", user);
         setUser({
           id: user.id,
           email: user.email || "",
@@ -44,13 +44,48 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   });
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
+  const signOutTrpc = trpcClient.users.signOut.useMutation({
+    onSuccess: async () => {
+      setUser(null);
+    }
+  });
+
+  const signOut = () => {
+    return signOutTrpc.mutateAsync();
   };
 
+  const signInTrpc = trpcClient.users.signIn.useMutation({
+    onSuccess: (user) => {
+      console.log("User signed in successfully:", user);
+      setUser({
+        id: user.id,
+        email: user.email || "",
+        aud: user.aud,
+      });
+    }
+  });
+
+  const signIn = (email: string, password: string) => {
+    return signInTrpc.mutateAsync({
+      email,
+      password,
+    }).then((user) => {
+      return {
+        id: user.id,
+        email: user.email || "",
+        aud: user.aud,
+      }
+    });
+  };
+
+  const refetchUser = async () => {
+    await meRes.refetch();
+  }
+
+
+  const isLoading = meRes.isLoading || signOutTrpc.isLoading || signInTrpc.isLoading;
   return (
-    <UserContext.Provider value={{ user, isLoading, signOut }}>
+    <UserContext.Provider value={{ user, isLoading, signOut, signIn, refetchUser }}>
       {children}
     </UserContext.Provider>
   );

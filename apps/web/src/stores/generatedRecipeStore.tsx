@@ -1,7 +1,7 @@
 import { Recipe } from '@cook/validations';
 import { create } from 'zustand';
 
-export type GeneratedRecipeState = {
+export type GeneratedRecipeState = { //TODO REMOVE
     recipe: Recipe | null;
     setRecipe: (recipe: Recipe) => void;
     reset: () => void;

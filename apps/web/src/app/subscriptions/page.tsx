@@ -13,7 +13,6 @@ import { trpcClient } from "@cook/trpc-client/client"
 export default function SubscriptionsPage() {
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY")
   const [activePlan, setActivePlan] = useState<number | null>(null)
-  //const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [subscriptionPlans, setSubscriptionPlans] = useState<Plan[]>([])
 
   trpcClient.plans.getPlans.useQuery(undefined, {

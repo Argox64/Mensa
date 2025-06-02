@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { trpcClient } from "@cook/trpc-client/client";
+import { useUser } from "@/contexts/UserContext";
+import { useRouter } from "next/navigation";
 
 type FormData = {
   email: string;
@@ -23,24 +23,20 @@ export default function SignIn() {
   } = useForm<FormData>();
   const router = useRouter();
   const [authError, setAuthError] = useState<string | null>(null);
-
-  const signIn = trpcClient.users.signIn.useMutation({
-    onSuccess: () => {
-      setAuthError(null);
-      router.push("/dashboard"); 
-    },
-    onError: (error) => {
-      setAuthError(error.message);
-    },
-  });
+  const { signIn } = useUser();
 
   const onSubmit = async (data: FormData) => {
-    await signIn.mutate({
-      email: data.email,
-      password: data.password,
-    });
-  };
-
+    signIn(
+      data.email,
+      data.password,
+    ).then((user) => {
+      router.push("/dashboard");
+      setAuthError(null);
+    })
+      .catch((error) => {
+        setAuthError("Sign in error: " + error);
+      });
+  }
   return (
     <MaxWidthWrapper className="flex flex-col items-center">
       <div className="flex flex-row items-center justify-center w-full h-[700px] sm:gap-10 md:gap-[100px] lg:gap-[400px]">

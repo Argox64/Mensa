@@ -50,18 +50,9 @@ export function SubscriptionManagement() {
     )
   }
 
-  if (!subscription) {
+  const nextBillingDate = subscription ? new Date(subscription.current_period_end) : new Date();
 
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-lg font-medium">Aucun abonnement actif trouvé.</div>
-      </div>
-    );
-  }
-
-  const nextBillingDate = new Date(subscription.current_period_end)
-
-  const startDate = getTime(add(nextBillingDate, subscription.billingCycle === "MONTHLY" ? { months: -1 } : { years: -1 }))
+  const startDate = subscription ? getTime(add(nextBillingDate, subscription.billingCycle === "MONTHLY" ? { months: -1 } : { years: -1 })) : 0;
   const progress = Math.max(1, (getTime(new Date()) - getTime(nextBillingDate)) / (getTime(nextBillingDate) - startDate))
 
   const handleCancelSubscription = async () => {
@@ -173,7 +164,7 @@ export function SubscriptionManagement() {
               </div></>)}
 
 
-        {!isCancelled && (
+        {!isCancelled && subscription && (
           <>
             <Separator />
 

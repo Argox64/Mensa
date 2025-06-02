@@ -30,7 +30,7 @@ export const recipeRouter = router({
           difficulty: recipeContent.difficulty,
           likesCount: recipe.likesCount,
           createdAt: dateToyyyyMMddFormat(recipe.createdAt),
-          Creator: recipe.user, //WARNING 
+          Creator: recipe.user,
         };
       }) as Recipe[];
       console.log("recipes", recs);
@@ -71,6 +71,7 @@ export const recipeRouter = router({
         difficulty: recipeContent.difficulty,
         likesCount: recipe.likesCount,
         createdAt: dateToyyyyMMddFormat(recipe.createdAt),
+        userLiked: recipe.Likes.length > 0, // Check if the user has liked the recipe
         Creator: {
           id: recipe.creatorId,
           userName: recipe.Creator.username,
@@ -148,7 +149,7 @@ export const recipeRouter = router({
         return { message: 'Unliked' };
       } catch (err) {
         if (err instanceof Prisma.PrismaClientKnownRequestError) {
-          if (err.code === 'P2002') {
+          if (err.code === 'P2002' || err.code === 'P2025') {
             return { error: 'Already unliked' };
           }
         }
@@ -174,6 +175,7 @@ export const recipeRouter = router({
               userId: user.id,
             },
           },
+          Creator: true,
         },
       });
 
@@ -194,7 +196,13 @@ export const recipeRouter = router({
           difficulty: recipeContent.difficulty,
           likesCount: recipe.likesCount,
           createdAt: dateToyyyyMMddFormat(recipe.createdAt),
-        };
+          imageUrl: recipe.imageUrl,
+          creatorId: recipe.creatorId,
+          Creator: {
+            id: recipe.creatorId,
+            userName: recipe.Creator.username,
+          }
+        } as Recipe;
       }) as Recipe[];
       return recs;
     }),

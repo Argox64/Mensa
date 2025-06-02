@@ -2,9 +2,9 @@ import { createClient } from "@cook/supabasejs";
 import { privateProcedure, publicProcedure, router } from "../trpc";
 import { SignInSchemaRequest, SignUpSchemaRequest, UserLite, UserSchema } from "@cook/validations";
 import { TRPCError } from "@trpc/server";
-import { INTERNAL_ERROR, InternalError } from "@cook/errors";
-import { signIn, getProfile } from "../services/user";
-import { setCookies } from "../utils/cookies";
+import { INTERNAL_ERROR, InternalError, UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError } from "@cook/errors";
+import { signUp, getProfile } from "../services/user";
+import { clearCookies, setCookies } from "../utils/cookies";
 
 export const userRouter = router({
   patchUser: privateProcedure
@@ -34,12 +34,10 @@ export const userRouter = router({
   signUp: publicProcedure
     .input(SignUpSchemaRequest)
     .mutation(async ({ input, ctx }) => {
-      const session = await signIn({input, ctx});
+      const session = await signUp({input, ctx});
 
       setCookies(ctx.res, session);
-      return {
-        session: session,
-      };
+      return session.user;
     }),
   signIn: publicProcedure
     .input(SignInSchemaRequest)
@@ -53,8 +51,11 @@ export const userRouter = router({
         password: input.password,
       });
 
-      if (!session)
+      if(error || !session) {
+        if(error?.code === "invalid_credentials")
+          throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
         throw new InternalError(INTERNAL_ERROR, {});
+      }
 
       const u = await ctx.prisma.user.findFirst({
         where: {
@@ -69,9 +70,7 @@ export const userRouter = router({
           message: "Email or password incorrect",
           code: "FORBIDDEN",
         });
-      return {
-        session: session,
-      };
+      return session.user;
     }),
   me: privateProcedure
     .query(async ({ ctx }) => {
@@ -81,5 +80,11 @@ export const userRouter = router({
     .output(UserSchema)
     .query(async ({ ctx }) => {
       return await getProfile({ctx});
+    }),
+  signOut: privateProcedure
+    .mutation(async ({ ctx }) => {
+      const supabase = await createClient();
+      await supabase.auth.signOut();
+      clearCookies(ctx.res);
     })
 });

@@ -32,10 +32,11 @@ export const RecipeSchema = RecipeContentSchema.extend({
   creatorId: zc.string().uuid(),
   comments: CommentSchema.array().optional(),
   likesCount: zc.number().default(0),
+  userLiked: zc.boolean().optional(),
   Creator: zc.object({
     id: zc.string().uuid(),
     userName: zc.string(),
-  }).optional()
+  }).optional(),
 });
 
 export const NewRecipeSchema = RecipeSchema.omit({

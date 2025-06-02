@@ -7,13 +7,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { trpcClient } from "@cook/trpc-client/client";
 import { SignUpSchemaRequest, SignUp as SignUpData } from "@cook/validations";
+import { useUser } from "@/contexts/UserContext";
 
 export default function SignUp() {
   const router = useRouter();
+  const { refetchUser } = useUser();
 
   const {
     register,
@@ -25,11 +26,13 @@ export default function SignUp() {
 
   const { mutate: signup, isLoading, error } = trpcClient.users.signUp.useMutation({
     onSuccess: () => {
+      refetchUser();
       router.push("/dashboard");
     },
   });
 
   const onSubmit = (data: SignUpData) => {
+    console.log(data);
     signup(data);
   };
 

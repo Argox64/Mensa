@@ -2,17 +2,16 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { trpcClient } from "@cook/trpc-client/client"
-import { Helmet } from "@/components/community/helmet"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Bookmark, Calendar, Clock, Heart, Plus, Printer, Share2, User } from "lucide-react"
+import { ArrowLeft, Bookmark, Clock, Heart, Plus, Printer, Share2, User } from "lucide-react"
 import { format } from "date-fns"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { fr } from "date-fns/locale"
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
-import { Recipe } from "@cook/validations"
 import { Separator } from "@/components/ui/separator"
 import { recipePlaceholderUrl } from "@/lib/utils"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function RecipePage() {
 
@@ -26,14 +25,33 @@ export default function RecipePage() {
   //const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [activeTab, setActiveTab] = useState("ingredients")
   const [isLiked, setIsLiked] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
 
   const { data: recipe, isLoading, error } = trpcClient.recipes.getRecipe.useQuery(
     { id: recipeId },
     {
       enabled: !!recipeId,
+      onSuccess: (recipe) => {
+        setIsLiked(recipe.userLiked ?? false)
+      },
     }
   )
+
+  const like = trpcClient.recipes.like.useMutation({
+    onSuccess: () => {
+      setIsLiked(true)
+    },
+    onError: (error) => {
+      console.error("Erreur lors de l'ajout aux favoris :", error)
+    }
+  });
+  const dislike = trpcClient.recipes.dislike.useMutation({
+    onSuccess: () => {
+      setIsLiked(false)
+    },
+    onError: (error) => {
+      console.error("Erreur lors de la suppression des favoris :", error)
+    }
+  });
 
   const handleShare = () => {
     // Logique de partage
@@ -46,7 +64,7 @@ export default function RecipePage() {
 
   const handleAddToPlanning = () => {
     // Logique pour ajouter au planning
-    alert(`Recette ${recipe?.title} ajoutée au planning`)
+    alert(`A implementer : l'ajout de la recette ${recipeId} au planning`)
   }
 
   const handleBack = () => {
@@ -55,12 +73,12 @@ export default function RecipePage() {
     router.push(`/recipes${currentParams ? `?${currentParams}` : ""}`)
   }
 
-  const handleLike = () => {
-    setIsLiked(!isLiked)
-  }
-
-  const handleSave = () => {
-    setIsSaved(!isSaved)
+  const handleLike = async () => {
+    if (!isLiked) {
+      await like.mutateAsync({ id: recipeId })
+    } else {
+      await dislike.mutateAsync({ id: recipeId })
+    }
   }
 
   if (isLoading) return <p className="p-4">Chargement...</p>
@@ -77,8 +95,25 @@ export default function RecipePage() {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Image + infos */}
       <div>
-        <div className="aspect-video rounded-lg overflow-hidden">
+        <div className="relative aspect-video rounded-lg overflow-hidden">
           <img src={recipePlaceholderUrl} alt={recipe.title} className="object-cover w-full h-full" />
+          <motion.button
+            onClick={handleLike}
+            whileTap={{ scale: 0.85 }}
+            whileHover={{ scale: 1.1 }}
+            className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm p-2 rounded-full shadow hover:shadow-lg transition-transform"
+            aria-label="J'aime"
+          >
+            <motion.div
+              key={isLiked ? "liked" : "unliked"}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+              <Heart className={`h-5 w-5 ${isLiked ? "fill-red-500 text-red-500" : "text-gray-500"}`} />
+            </motion.div>
+          </motion.button>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -145,14 +180,6 @@ export default function RecipePage() {
           <Button onClick={handleAddToPlanning}>
             <Plus className="mr-2 h-4 w-4" />
             Ajouter au planning
-          </Button>
-          <Button variant="outline" onClick={handleSave}>
-            <Bookmark className={`mr-2 h-4 w-4 ${isSaved ? "fill-current" : ""}`} />
-            {isSaved ? "Sauvegardé" : "Sauvegarder"}
-          </Button>
-          <Button variant="outline" onClick={handleLike}>
-            <Heart className={`mr-2 h-4 w-4 ${isLiked ? "fill-current text-red-500" : ""}`} />
-            {isLiked ? "Aimé" : "J'aime"}
           </Button>
           <Button variant="outline" size="icon" onClick={handleShare}>
             <Share2 className="h-4 w-4" />

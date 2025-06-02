@@ -14,3 +14,7 @@ export function setCookies(res: express.Response, session: any) {
       maxAge: 2147483647 // set Max
     });
   }
+export function clearCookies(res: express.Response) {
+    res.clearCookie('token');
+    res.clearCookie('refresh-token');
+  }

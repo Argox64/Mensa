@@ -1,8 +1,8 @@
 import { privateProcedure, publicProcedure, router } from "../trpc";
-import { UserLite } from "@cook/validations";
 import { z } from "@cook/validations/src/customs";
 import Stripe from "stripe";
 import { getProfile } from "../services/user";
+import { GetPaymentsListSchema } from "@cook/validations";
 
 const stripe: Stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "stripe-scret-key", {
     apiVersion: '2025-04-30.basil',
@@ -10,11 +10,12 @@ const stripe: Stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "stripe-scret
 
 export const paymentRouter = router({
     getPayments: privateProcedure
+    .input(GetPaymentsListSchema)
         .query(async ({ input, ctx }) => {
             const u = await getProfile({ ctx });
             if(!u.stripeCustomerId) 
                 return null;
-            return await getInvoicesByCustomerId(u.stripeCustomerId);
+            return await getInvoicesByCustomerId(u.stripeCustomerId, input.gte);
         }),
     getSession: publicProcedure
         .input(z.object({ sessionId: z.string() }))
@@ -42,8 +43,11 @@ async function getInvoicesByEmail(email: string) {
     return allInvoices;
 }
 
-async function getInvoicesByCustomerId(customerId: string) {
+async function getInvoicesByCustomerId(customerId: string, gte: number = 0) {
     return (await stripe.invoices.list({
+        created: {
+            gte: gte
+        },
         customer: customerId,
         limit: 100
     })).data
@@ -52,7 +56,7 @@ async function getInvoicesByCustomerId(customerId: string) {
 async function getCustomersByEmail(email: string) {
     const customers = await stripe.customers.list({
         email: email,
-        limit: 100, // Ajustez la limite selon vos besoins
+        limit: 100, 
     });
     return customers.data;
 }

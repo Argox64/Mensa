@@ -17,7 +17,7 @@ export const authenticateToken = async (req: Request, res: Response) => {
   const supabase = createClient();
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error) {
-    if (error?.code === "bad_jwt") {
+    if (error?.code === "bad_jwt" || error?.code === "token_expired") {
       const { data, error } = await supabase.auth.refreshSession({ refresh_token: refresh_token });
       if (error) {
         res.clearCookie('token', {
@@ -36,12 +36,7 @@ export const authenticateToken = async (req: Request, res: Response) => {
         setCookies(res, data.session);
       }
     }
-    throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
   }
-
-  if (!user)
-    throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
-
 
   return user;
 };
