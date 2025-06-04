@@ -1,7 +1,9 @@
-import { GenerateRecipeRequest, NewRecipe, NewRecipeSchema, Recipe, RecipeContentSchema, RecipeListSchema, RecipePlannerRequest, RecipePlannerSchemaRequest, RecipeRequest, RecipeResponseSchema, RecipeSchema } from "@cook/validations";
-import { ITRPCContext } from "../context";
-import { INTERNAL_ERROR, InternalError, UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError } from "@cook/errors";
+import { GenerateRecipeRequest, GetRecipesRequest, NewRecipe, Recipe, RecipeContent, RecipeContentSchema, RecipeListSchema, RecipePlannerRequest, UserLite } from "@cook/validations";
+import { IContext } from "../context";
+import { BadRequestError, INTERNAL_ERROR, InternalError, NOT_FOUND_RESOURCE_ERROR, NotFoundError, UNAUTHORIZED_RESOURCE_ERROR, UnauthorizedError } from "@cook/errors";
 import { dateToyyyyMMddFormat } from "../utils/date";
+import { generateImageAI, generateRecipeAI, generateRecipeListAI } from "./openai";
+import { Prisma, searchRecipes } from "@cook/db";
 
 const generatePromptUniqueRecipeSystem = `Tu es un chef cuisinier professionnel qui donne des recettes détaillées et des conseils de cuisine.
 
@@ -94,148 +96,229 @@ const generateUniqueRecipePromptUser = (tags: string[], preparationAndCookingTim
   ${description !== "" ? "Voici une courte description de la recette: " + description + "." : ""}
 `;
 
-export async function generateUniqueRecipe({ ctx, input }: { ctx: ITRPCContext, input: GenerateRecipeRequest }): Promise<Recipe> {
+export async function generateUniqueRecipe({ ctx, input }: { ctx: IContext, input: GenerateRecipeRequest }): Promise<Recipe> {
     let user = ctx.user;
-    if (!user) throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR, {});
-    const response = await ctx.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-            { role: "system", content: generatePromptUniqueRecipeSystem },
-            {
-                role: "user",
-                content: generateUniqueRecipePromptUser(
-                    input.tags || [],
-                    input.maxPreparationAndCookingTime || 60,
-                    input.description || ""
-                ),
-            },
-        ],
-        max_tokens: 500,
+    if (!user) throw new UnauthorizedError(UNAUTHORIZED_RESOURCE_ERROR);
+
+    const rawResponse = await generateRecipeAI({ ctx, input });
+
+    let generatedRecipe = JSON.parse(rawResponse) as NewRecipe;
+
+    // Validation du format avec Zod
+    RecipeContentSchema.parse(generatedRecipe);
+    const newRecipe = await ctx.prisma.recipe.create({
+        data: {
+            name: generatedRecipe.title,
+            description: generatedRecipe.description,
+            creatorId: user.id,
+            content: generatedRecipe,
+            tags: input.tags,
+            totalCookingTime: generatedRecipe.preparationTime + generatedRecipe.cookingTime,
+        }
     });
-
-    const rawResponse = response.choices[0]?.message.content?.trim() ?? "";
-
-    try {
-        let generatedRecipe = JSON.parse(rawResponse) as NewRecipe;
-
-        // Validation du format avec Zod
-        RecipeContentSchema.parse(generatedRecipe);
-        const newRecipe = await ctx.prisma.recipe.create({
-            data: {
-                name: generatedRecipe.title,
-                description: generatedRecipe.description,
-                creatorId: user.id,
-                content: generatedRecipe,
-                tags: input.tags,
-                totalCookingTime: generatedRecipe.preparationTime + generatedRecipe.cookingTime,
-            }
-        });
-        return {
-            id: newRecipe.id,
-            title: newRecipe.name,
-            description: newRecipe.description,
-            tags: newRecipe.tags ?? [],
-            ingredients: generatedRecipe.ingredients,
-            steps: generatedRecipe.steps,
-            preparationTime: generatedRecipe.preparationTime,
-            cookingTime: generatedRecipe.cookingTime,
-            difficulty: generatedRecipe.difficulty,
-            nutrition: generatedRecipe.nutrition,
-            notes: generatedRecipe.notes ?? [],
-            timePerAdditionalPortion: generatedRecipe.timePerAdditionalPortion || 0,
-            imageUrl: newRecipe.imageUrl,
-            creatorId : newRecipe.creatorId,
-            likesCount: newRecipe.likesCount,
-            createdAt: dateToyyyyMMddFormat(newRecipe.createdAt),
-        };
-    } catch (error) {
-        if (process.env.NODE_ENV === "development")
-            throw error;
-        throw new InternalError(INTERNAL_ERROR.code, "Erreur lors de la génération de la recette.", {});
-    }
+    return {
+        id: newRecipe.id,
+        title: newRecipe.name,
+        description: newRecipe.description,
+        tags: newRecipe.tags ?? [],
+        ingredients: generatedRecipe.ingredients,
+        steps: generatedRecipe.steps,
+        preparationTime: generatedRecipe.preparationTime,
+        cookingTime: generatedRecipe.cookingTime,
+        difficulty: generatedRecipe.difficulty,
+        nutrition: generatedRecipe.nutrition,
+        notes: generatedRecipe.notes ?? [],
+        timePerAdditionalPortion: generatedRecipe.timePerAdditionalPortion || 0,
+        imageUrl: newRecipe.imageUrl,
+        creatorId: newRecipe.creatorId,
+        likesCount: newRecipe.likesCount,
+        createdAt: dateToyyyyMMddFormat(newRecipe.createdAt),
+    };
 }
 
-export async function generateRecipesList({ ctx, userId, input }: { ctx: ITRPCContext, userId: string, input: RecipePlannerRequest }): Promise<string[]> {
+export async function generateRecipesList({ ctx, input }: { ctx: IContext, input: RecipePlannerRequest }): Promise<string[]> {
     let generatedRecipesList: string[] = [];
 
-    const response = await ctx.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-            { role: "system", content: generatePromptMultipleRecipeSystem },
-            {
-                role: "user",
-                content: JSON.stringify(input),
+    const rawResponse = await generateRecipeListAI({ ctx, input });
+
+    generatedRecipesList = JSON.parse(rawResponse) as string[];
+
+    RecipeListSchema.parse(generatedRecipesList);
+
+    return generatedRecipesList;
+}
+
+export async function generateRecipeImage({ ctx, prompt }: { ctx: IContext, prompt: string }) {
+    return await generateImageAI({ ctx, prompt });
+}
+
+export async function getRecipes({ ctx, input }: { ctx: IContext, input: GetRecipesRequest }) {
+    const user = ctx.user as UserLite;
+
+    const recipes = await ctx.prisma.$queryRawTyped(searchRecipes(input.searchTerm, input.offset, input.limit));
+
+    const recs = recipes.map((recipe) => {
+        const recipeContent = recipe.content as RecipeContent;
+        return {
+            id: recipe.id,
+            title: recipe.name,
+            description: recipeContent.description,
+            tags: recipe.tags,
+            ingredients: recipeContent.ingredients,
+            steps: recipeContent.steps,
+            preparationTime: recipeContent.preparationTime,
+            cookingTime: recipeContent.cookingTime,
+            nutrition: recipeContent.nutrition,
+            notes: recipeContent.notes || [],
+            timePerAdditionalPortion: recipeContent.timePerAdditionalPortion || 0,
+            difficulty: recipeContent.difficulty,
+            likesCount: recipe.likesCount,
+            createdAt: dateToyyyyMMddFormat(recipe.createdAt),
+            Creator: recipe.user,
+        };
+    }) as Recipe[];
+    return recs;
+}
+
+export async function getRecipeById({ ctx, recipeId }: { ctx: IContext, recipeId: string }) {
+    const user = ctx.user as UserLite;
+
+    const recipe = await ctx.prisma.recipe.findUnique({
+        where: { id: recipeId },
+        include: {
+            Likes: {
+                where: {
+                    userId: user.id,
+                },
             },
-        ],
-        max_tokens: 500,
+            Creator: true
+        },
     });
 
-    const rawResponse = response.choices[0]?.message.content?.trim() ?? "";
-    console.log(input)
-    console.log("Response: ", rawResponse);
+    if (!recipe) throw new NotFoundError(NOT_FOUND_RESOURCE_ERROR);
+
+    const recipeContent = recipe.content as RecipeContent;
+    return {
+        id: recipe.id,
+        title: recipe.name,
+        description: recipeContent.description,
+        tags: recipe.tags,
+        ingredients: recipeContent.ingredients,
+        steps: recipeContent.steps,
+        preparationTime: recipeContent.preparationTime,
+        cookingTime: recipeContent.cookingTime,
+        nutrition: recipeContent.nutrition,
+        notes: recipeContent.notes || [],
+        timePerAdditionalPortion: recipeContent.timePerAdditionalPortion || 0,
+        difficulty: recipeContent.difficulty,
+        likesCount: recipe.likesCount,
+        createdAt: dateToyyyyMMddFormat(recipe.createdAt),
+        userLiked: recipe.Likes.length > 0, // Check if the user has liked the recipe
+        Creator: {
+            id: recipe.creatorId,
+            userName: recipe.Creator.username,
+        },
+    } as Recipe;
+}
+
+export async function likeRecipe({ ctx, recipeId }: { ctx: IContext, recipeId: string }) {
+    const user = ctx.user as UserLite;
 
     try {
-        generatedRecipesList = JSON.parse(rawResponse) as string[];
+        await ctx.prisma.$transaction(async (tx) => {
+            await tx.likes.create({
+                data: {
+                    userId: user.id,
+                    recipeId: recipeId
+                }
+            });
+            await tx.recipe.update({
+                where: { id: recipeId },
+                data: { likesCount: { increment: 1 } },
+            });
+        });
 
-        // Validation du format avec Zod
-        RecipeListSchema.parse(generatedRecipesList);
-
-        return generatedRecipesList;
-
-        //return generateRecipeBatch({ ctx, userId: userId, input: input.recipes, recipesList: generatedRecipesList });
-
-    } catch (error) {
-        if (process.env.NODE_ENV === "development")
-            throw error;
-        throw new InternalError(INTERNAL_ERROR.code, "Erreur lors de la génération du planning.", {});
+        return { message: 'Liked' };
+    } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError) {
+            if (err.code === 'P2002') {
+                return new BadRequestError('ALREADY_LIKED', 'You have already liked this recipe', {});
+            }
+        }
+        throw new InternalError(INTERNAL_ERROR);
     }
 }
 
-/*async function generateRecipesBatch({ ctx, userId, input, recipesList }: { ctx: ITRPCContext, userId: string, input: RecipePlannerRequest, recipesList: string[] }): Promise<Recipe[]> {
-    let recipesBatchContent = input.map((objet, index) => ({
-        ...objet,
-        title: recipesList[index]
-    }))
-
-    console.log("System : ", recipesBatchContent);
-    console.log("User : ", generateBatchRecipePromptUser(recipesBatchContent));
-    // Validation du format avec Zod
-    const response = await ctx.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-            { role: "system", content: generatePromptBatchRecipeSystem },
-            {
-                role: "user",
-                content: generateBatchRecipePromptUser(recipesBatchContent),
-            },
-        ],
-        max_tokens: 300 * recipesList.length,
-    });
-
-    const rawResponse = response.choices[0]?.message.content?.trim() ?? "";
-    console.log("Response: ", rawResponse);
+export async function unlikeRecipe({ ctx, recipeId }: { ctx: IContext, recipeId: string }) {
+    const user = ctx.user as UserLite;
 
     try {
-        const generatedRecipes = JSON.parse(rawResponse) as Recipe[];
-
-        // Validation du format avec Zod
-        RecipeSchema.array().parse(generatedRecipes);
-
-        const newRecipes = await ctx.prisma.recipe.createMany({
-            data: generatedRecipes.map(recipe => ({
-                name: recipe.title,
-                creatorId: userId,
-                content: recipe,
-                tags: recipe.tags,
-                totalCookingTime: recipe.preparationTime + recipe.cookingTime,
-            }))
+        await ctx.prisma.$transaction(async (tx) => {
+            await tx.likes.delete({
+                where: { userId_recipeId: { userId: user.id, recipeId: recipeId } },
+            });
+            await tx.recipe.update({
+                where: { id: recipeId },
+                data: { likesCount: { decrement: 1 } },
+            });
         });
 
-        return generatedRecipes;
-
-    } catch (error) {
-        if(process.env.NODE_ENV === "development")
-            throw error;
-        throw new InternalError(INTERNAL_ERROR.code, "Erreur lors de la génération du planning.", {});
+        return { message: 'Unliked' };
+    } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError) {
+            if (err.code === 'P2002' || err.code === 'P2025') {
+                return new BadRequestError('ALREADY_UNLIKED', 'You have already unliked this recipe', {});
+            }
+        }
+        throw new InternalError(INTERNAL_ERROR);
     }
-}*/
+}
+
+export async function getSavedRecipes({ ctx }: { ctx: IContext }) {
+    const user = ctx.user as UserLite;
+
+    const recipes = await ctx.prisma.recipe.findMany({
+        where: {
+            Likes: {
+                some: {
+                    userId: user.id,
+                },
+            },
+        },
+        include: {
+            Likes: {
+                where: {
+                    userId: user.id,
+                },
+            },
+            Creator: true,
+        },
+    });
+
+    const recs = recipes.map((recipe) => {
+        const recipeContent = recipe.content as RecipeContent;
+        return {
+            id: recipe.id,
+            title: recipe.name,
+            description: recipeContent.description,
+            tags: recipe.tags,
+            ingredients: recipeContent.ingredients,
+            steps: recipeContent.steps,
+            preparationTime: recipeContent.preparationTime,
+            cookingTime: recipeContent.cookingTime,
+            nutrition: recipeContent.nutrition,
+            notes: recipeContent.notes || [],
+            timePerAdditionalPortion: recipeContent.timePerAdditionalPortion || 0,
+            difficulty: recipeContent.difficulty,
+            likesCount: recipe.likesCount,
+            createdAt: dateToyyyyMMddFormat(recipe.createdAt),
+            imageUrl: recipe.imageUrl,
+            creatorId: recipe.creatorId,
+            Creator: {
+                id: recipe.creatorId,
+                userName: recipe.Creator.username,
+            }
+        } as Recipe;
+    }) as Recipe[];
+    return recs;
+}

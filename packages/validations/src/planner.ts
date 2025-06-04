@@ -51,7 +51,7 @@ export const DeletePlannerEntrySchemaRequest = zc.object({
 
 export type PlannerEntry = z.infer<typeof PlannerEntrySchema>;
 export type GetPlannerRequest = z.infer<typeof GetPlannerEntriesSchemaRequest>;
-export type CreatePlannerEntriesRequest = z.infer<typeof CreatePlannerEntrySchemaRequest>;
+export type CreatePlannerEntryRequest = z.infer<typeof CreatePlannerEntrySchemaRequest>;
 export type CreatePlannerEntriesBatchRequest = z.infer<typeof CreatePlannerEntryBatchSchemaRequest>;
-export type DeletePlannerEntriesRequest = z.infer<typeof DeletePlannerEntrySchemaRequest>;
+export type DeletePlannerEntryRequest = z.infer<typeof DeletePlannerEntrySchemaRequest>;
 export type GetPlannerEntriesResponse = z.infer<typeof GetPlannerEntriesSchemaResponse>;

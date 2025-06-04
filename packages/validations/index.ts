@@ -1,4 +1,3 @@
-export * from "./src/affiliation";
 export * from "./src/comment";
 export * from "./src/notificationSetting";
 export * from "./src/others";

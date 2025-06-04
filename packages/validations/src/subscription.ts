@@ -16,3 +16,5 @@ export const SubscriptionSchema = zc.object({
 });
 
 export type Subscription = z.infer<typeof SubscriptionSchema>;
+export type BillingCycle = Subscription["billingCycle"];
+export type Status = Subscription["status"];
